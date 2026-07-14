@@ -98,6 +98,7 @@ Mientras no exista evidencia que lo requiera, quedan fuera de la arquitectura:
 | [0001](decisions/0001-use-a-modular-monolith.md) | Aceptada | Usar un monolito modular como arquitectura de aplicación |
 | [0002](decisions/0002-use-a-react-spa.md) | Aceptada | Mantener una SPA con React, Vite y Recharts |
 | [0003](decisions/0003-deploy-with-compose-on-a-single-host.md) | Aceptada | Desplegar con Docker Compose en un único host |
+| [0004](decisions/0004-separate-operational-and-analytical-storage.md) | Aceptada | Separar el almacenamiento operacional del analítico |
 
 ## Mantenimiento
 
