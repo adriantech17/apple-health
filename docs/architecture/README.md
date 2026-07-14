@@ -91,6 +91,14 @@ Mientras no exista evidencia que lo requiera, quedan fuera de la arquitectura:
 - una partición o archivo Parquet por usuario;
 - infraestructura cloud obligatoria.
 
+## Registro de decisiones
+
+| ADR | Estado | Decisión |
+|---|---|---|
+| [0001](decisions/0001-use-a-modular-monolith.md) | Aceptada | Usar un monolito modular como arquitectura de aplicación |
+| [0002](decisions/0002-use-a-react-spa.md) | Aceptada | Mantener una SPA con React, Vite y Recharts |
+| [0003](decisions/0003-deploy-with-compose-on-a-single-host.md) | Aceptada | Desplegar con Docker Compose en un único host |
+
 ## Mantenimiento
 
 Una decisión debe revisarse cuando cambie una restricción relevante, aparezcan
