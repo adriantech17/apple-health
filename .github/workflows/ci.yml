@@ -34,6 +34,9 @@ jobs:
       - name: Audit tracked files
         run: python scripts/check_repository.py
 
+      - name: Test repository audit
+        run: python -m unittest scripts.test_check_repository
+
       - name: Validate branch and commits
         if: github.event_name == 'pull_request'
         env:

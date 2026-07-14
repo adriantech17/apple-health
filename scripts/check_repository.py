@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import stat
 import subprocess
 from pathlib import Path, PurePosixPath
 
@@ -48,6 +49,7 @@ PRIVATE_EXPORT_PATTERNS = (
     re.compile(r"^export.*\.xml$", re.IGNORECASE),
     re.compile(r"^route_.*\.gpx$", re.IGNORECASE),
 )
+MAX_SCANNED_FILE_BYTES = 5 * 1024 * 1024
 
 
 def tracked_files() -> list[str]:
@@ -59,28 +61,51 @@ def tracked_files() -> list[str]:
     return [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
 
 
-def main() -> None:
+def audit_file(filename: str, root: Path = Path(".")) -> list[str]:
     failures: list[str] = []
+    path = PurePosixPath(filename)
+    lower = filename.lower()
+    if path.name in FORBIDDEN_NAMES or FORBIDDEN_PARTS.intersection(path.parts):
+        failures.append(f"archivo privado o generado versionado: {filename}")
+    if lower.endswith(FORBIDDEN_SUFFIXES):
+        failures.append(f"formato privado o binario versionado: {filename}")
+    if any(pattern.match(path.name) for pattern in PRIVATE_EXPORT_PATTERNS):
+        failures.append(f"exportación privada versionada: {filename}")
+
+    if failures:
+        return failures
+
+    file_path = root / filename
+    try:
+        file_status = file_path.lstat()
+    except OSError as error:
+        return [f"no se pudo inspeccionar {filename}: {error}"]
+
+    if stat.S_ISLNK(file_status.st_mode):
+        return [f"enlace simbólico no permitido: {filename}"]
+    if not stat.S_ISREG(file_status.st_mode):
+        return [f"archivo no regular no permitido: {filename}"]
+    if file_status.st_size > MAX_SCANNED_FILE_BYTES:
+        return [
+            f"archivo demasiado grande para auditar: {filename} "
+            f"({file_status.st_size} bytes; límite {MAX_SCANNED_FILE_BYTES})"
+        ]
+
+    try:
+        content = file_path.read_bytes()
+    except OSError as error:
+        return [f"no se pudo leer {filename}: {error}"]
+
+    for marker in SECRET_MARKERS:
+        if marker.search(content):
+            failures.append(f"posible secreto detectado en {filename}")
+
+    return failures
+
+
+def main() -> None:
     files = tracked_files()
-
-    for filename in files:
-        path = PurePosixPath(filename)
-        lower = filename.lower()
-        if path.name in FORBIDDEN_NAMES or FORBIDDEN_PARTS.intersection(path.parts):
-            failures.append(f"archivo privado o generado versionado: {filename}")
-        if lower.endswith(FORBIDDEN_SUFFIXES):
-            failures.append(f"formato privado o binario versionado: {filename}")
-        if any(pattern.match(path.name) for pattern in PRIVATE_EXPORT_PATTERNS):
-            failures.append(f"exportación privada versionada: {filename}")
-
-        try:
-            content = Path(filename).read_bytes()
-        except OSError as error:
-            failures.append(f"no se pudo leer {filename}: {error}")
-            continue
-        for marker in SECRET_MARKERS:
-            if marker.search(content):
-                failures.append(f"posible secreto detectado en {filename}")
+    failures = [failure for filename in files for failure in audit_file(filename)]
 
     if failures:
         print("Auditoría del repositorio: ERROR")
