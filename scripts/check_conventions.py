@@ -14,7 +14,7 @@ BRANCH_PATTERNS = (
     ),
 )
 COMMIT_PATTERN = re.compile(
-    rf"^(?:{TYPES})(?:\([a-z0-9]+(?:-[a-z0-9]+)*\))?!?: [^\s].+$"
+    rf"^(?:{TYPES})\([a-z0-9]+(?:-[a-z0-9]+)*\)!?: [^\s].+$"
 )
 
 
@@ -44,6 +44,7 @@ def main() -> None:
     parser.add_argument("--base")
     parser.add_argument("--head")
     parser.add_argument("--commit")
+    parser.add_argument("--title")
     arguments = parser.parse_args()
 
     failures: list[str] = []
@@ -64,6 +65,14 @@ def main() -> None:
             failures.append(f"asunto de commit superior a 100 caracteres: {subject}")
         if not COMMIT_PATTERN.fullmatch(subject):
             failures.append(f"commit no convencional: {subject}")
+
+    if arguments.base and arguments.head and not arguments.title:
+        failures.append("falta el título del pull request")
+    if arguments.title:
+        if len(arguments.title) > 100:
+            failures.append("título de pull request superior a 100 caracteres")
+        if not COMMIT_PATTERN.fullmatch(arguments.title):
+            failures.append(f"título de pull request no convencional: {arguments.title}")
 
     if failures:
         print("Convenciones del repositorio: ERROR")

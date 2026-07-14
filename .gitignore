@@ -15,9 +15,7 @@ imports/
 backups/
 native_exports/
 HealthAutoExport-*.json
-apple-health-export-*.zip
-export.xml
-exportación.xml
+export*.xml
 route_*.gpx
 *.parquet
 *.sqlite

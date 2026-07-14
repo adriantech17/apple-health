@@ -45,8 +45,7 @@ SECRET_MARKERS = (
 )
 PRIVATE_EXPORT_PATTERNS = (
     re.compile(r"^HealthAutoExport-.*\.json$", re.IGNORECASE),
-    re.compile(r"^apple-health-export-.*\.zip$", re.IGNORECASE),
-    re.compile(r"^export(?:ación)?\.xml$", re.IGNORECASE),
+    re.compile(r"^export.*\.xml$", re.IGNORECASE),
     re.compile(r"^route_.*\.gpx$", re.IGNORECASE),
 )
 
