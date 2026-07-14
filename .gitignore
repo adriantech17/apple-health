@@ -1,0 +1,54 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Private health data and local backups
+data/
+imports/
+backups/
+native_exports/
+HealthAutoExport-*.json
+apple-health-export-*.zip
+export.xml
+exportación.xml
+route_*.gpx
+*.parquet
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.json.gz
+*.gpg
+*.zip
+*.tar
+*.tar.gz
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.py[cod]
+*.egg-info/
+
+# Frontend
+dashboard/node_modules/
+dashboard/dist/
+npm-debug.log*
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
