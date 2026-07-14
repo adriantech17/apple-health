@@ -1,6 +1,6 @@
 # ADR 0003: desplegar con Docker Compose en un único host
 
-- Estado: aceptada
+- Estado: Aceptada
 - Fecha: 2026-07-14
 
 ## Contexto
@@ -14,9 +14,15 @@ de un nodo.
 
 Usar Docker Compose como unidad de despliegue en un único host.
 
+Durante la transición pueden coexistir los contenedores de ingesta y dashboard.
+La arquitectura objetivo los reúne en una imagen de aplicación construida en
+varias etapas. Un reverse proxy TLS podrá permanecer como contenedor separado
+porque sí representa una responsabilidad operativa específica.
+
 El despliegue debe mantener:
 
-- imágenes reproducibles y actualizadas mediante pull requests;
+- imágenes reproducibles, con bases fijadas por digest y actualizadas mediante
+  pull requests;
 - procesos sin privilegios, capacidades mínimas y filesystem de solo lectura
   cuando sea viable;
 - secretos montados como archivos, nunca incluidos en la imagen o el Git;
@@ -41,6 +47,8 @@ terminación TLS equivalente.
 
 - la Raspberry Pi sigue siendo un único punto de fallo;
 - Compose no proporciona alta disponibilidad entre nodos;
+- escalar a varias réplicas requerirá externalizar primero el estado
+  operacional y las sesiones que no puedan validarse de forma autónoma;
 - la restauración depende de que las copias externas se prueben periódicamente.
 
 ## Alternativas descartadas

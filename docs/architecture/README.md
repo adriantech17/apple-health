@@ -14,15 +14,24 @@ Una decisión aceptada no implica que su implementación haya finalizado.
 
 ## Contexto del producto
 
-Apple Health es un dashboard privado para recibir, conservar y analizar datos
-de Apple Salud exportados mediante Health Auto Export.
+Apple Health es el nombre del proyecto: un dashboard privado para recibir,
+conservar y analizar datos de la app Salud (Apple Health) exportados mediante
+Health Auto Export.
+
+En estos documentos se usa de forma consistente:
+
+- **Apple Health**, para el proyecto;
+- **app Salud (Apple Health)**, para la aplicación y plataforma de Apple;
+- **Health Auto Export**, para la aplicación que realiza las exportaciones.
 
 El alcance confirmado actualmente es:
 
 - un usuario y una instalación privada;
 - una Raspberry Pi 5 con almacenamiento NVMe;
 - acceso desde la red local;
-- importaciones periódicas de métricas consolidadas;
+- importaciones semanales de métricas consolidadas;
+- visualización de tendencias y explicación de patrones con contexto educativo,
+  sin presentar el dashboard como herramienta diagnóstica;
 - prioridad alta para privacidad, integridad y trazabilidad;
 - posibilidad futura de incorporar usuarios y métricas adicionales, sin una
   previsión de escala o concurrencia confirmada.
@@ -30,6 +39,23 @@ El alcance confirmado actualmente es:
 La arquitectura debe resolver bien este alcance y permitir una evolución
 gradual. Las hipótesis futuras no justifican por sí solas desplegar componentes
 que todavía no son necesarios.
+
+## Estado actual y arquitectura objetivo
+
+La documentación describe una evolución, no un reemplazo inmediato. A fecha de
+esta decisión, el sistema privado funciona con componentes que se simplificarán
+de forma incremental:
+
+| Responsabilidad | Implementación actual | Arquitectura objetivo |
+|---|---|---|
+| Interfaz | SPA con React, Vite y Recharts; backend for frontend (BFF) FastAPI separado | El mismo stack frontend servido por la aplicación modular |
+| API | FastAPI y Uvicorn para ingesta y consultas | Monolito modular FastAPI con límites internos explícitos |
+| Datos | SQLite para metadatos, Parquet para valores y DuckDB para consultas | Almacén operacional autoritativo; Parquet y DuckDB solo como capa analítica derivada |
+| Despliegue | Docker Compose en Raspberry Pi, con dos contenedores de aplicación | Docker Compose con un desplegable de aplicación y proxy TLS al salir de la LAN de confianza |
+
+Los manifiestos de dependencias y el código son la fuente de verdad para las
+versiones instaladas. Los ADR justifican familias tecnológicas y fronteras
+arquitectónicas, evitando quedar obsoletos con cada actualización menor.
 
 ## Principios
 
@@ -48,6 +74,8 @@ que todavía no son necesarios.
    incluyen validación y se integran mediante pull request.
 7. **Operación asumible por una sola persona.** Cada servicio adicional debe
    compensar claramente su coste de actualización, monitorización y backup.
+8. **Patrones explicables.** Una tendencia derivada debe indicar las métricas,
+   el periodo y la regla que la sustentan, además de sus limitaciones.
 
 ## Arquitectura objetivo por responsabilidades
 
@@ -70,8 +98,9 @@ ruta analítica cuando el volumen o las consultas lo justifican.
 
 | Fase | Necesidad demostrada | Decisión mínima |
 |---|---|---|
-| Privada actual | Un usuario, carga periódica y consultas personales | Aplicación modular, un almacén operacional y Docker Compose |
-| Multiusuario inicial | Usuarios autenticados y escrituras concurrentes | Incorporar identidad en el modelo y usar PostgreSQL como fuente autoritativa |
+| Privada actual | Un usuario, carga semanal y consultas personales | Aplicación modular, un almacén operacional y Docker Compose |
+| Perfiles locales | Pocos usuarios en la instalación privada y un único escritor | Incorporar identidad y autorización; mantener SQLite solo mientras las pruebas confirmen que sigue siendo suficiente |
+| Multiusuario expuesto o concurrente | Acceso externo, escrituras multiproceso o varias réplicas | Migrar el almacén autoritativo a PostgreSQL antes de habilitar ese flujo |
 | Analítica de volumen | Escaneos históricos grandes o muestras sin resumir | Generar Parquet compactado por lotes y consultar con DuckDB |
 | Escala distribuida | Límites medidos de una única instancia | Evaluar réplicas o separación selectiva del componente limitante |
 
