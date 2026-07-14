@@ -11,6 +11,7 @@ FORBIDDEN_PARTS = {
     ".tools",
     ".venv",
     "backups",
+    "build",
     "credentials",
     "data",
     "dist",
