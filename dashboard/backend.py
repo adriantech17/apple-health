@@ -4,17 +4,21 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import logging
 import os
 import re
 import secrets
 import time
-from collections import defaultdict, deque
+from collections import deque
 from pathlib import Path
 from typing import Any
 
 import httpx
 from fastapi import Cookie, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
+
+
+logger = logging.getLogger(__name__)
 
 
 def read_secret(name: str) -> str:
@@ -38,10 +42,12 @@ SESSION_SECRET = read_secret("DASHBOARD_SESSION_SECRET")
 COOKIE_SECURE = os.environ.get("DASHBOARD_COOKIE_SECURE", "true").lower() == "true"
 SESSION_SECONDS = int(os.environ.get("DASHBOARD_SESSION_HOURS", "12")) * 3600
 MAX_ACTIVE_SESSIONS = 64
-MAX_LOGIN_CLIENTS = 1024
 STATIC_DIR = Path("/app/static")
 COOKIE_NAME = "healthscope_session"
 METRIC_PATTERN = re.compile(r"^[a-z0-9_]+$")
+LOGIN_WINDOW_SECONDS = 300
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_TRACKED_CLIENTS = 2048
 
 if len(API_TOKEN) < 32:
     raise RuntimeError("HEALTH_API_TOKEN must contain at least 32 characters")
@@ -51,7 +57,7 @@ if len(SESSION_SECRET) < 32:
     raise RuntimeError("DASHBOARD_SESSION_SECRET must contain at least 32 characters")
 
 app = FastAPI(title="HealthScope Dashboard", docs_url=None, redoc_url=None, openapi_url=None)
-failed_logins: dict[str, deque[float]] = defaultdict(deque)
+failed_logins: dict[str, deque[float]] = {}
 active_sessions: dict[str, int] = {}
 login_lock = asyncio.Lock()
 
@@ -133,19 +139,29 @@ def require_session(session: str | None) -> None:
         raise HTTPException(status_code=401, detail="Authentication required")
 
 
+def _prune_failed_logins(now: float) -> None:
+    cutoff = now - LOGIN_WINDOW_SECONDS
+    for client, attempts in list(failed_logins.items()):
+        while attempts and attempts[0] < cutoff:
+            attempts.popleft()
+        if not attempts:
+            failed_logins.pop(client, None)
+
+
 def check_rate_limit(client: str) -> None:
-    now = time.time()
-    for known_client, known_attempts in list(failed_logins.items()):
-        if not known_attempts or known_attempts[-1] < now - 300:
-            failed_logins.pop(known_client, None)
-    if client not in failed_logins and len(failed_logins) >= MAX_LOGIN_CLIENTS:
-        oldest = min(failed_logins, key=lambda item: failed_logins[item][-1])
-        failed_logins.pop(oldest, None)
-    attempts = failed_logins[client]
-    while attempts and attempts[0] < now - 300:
-        attempts.popleft()
-    if len(attempts) >= 5:
+    _prune_failed_logins(time.time())
+    attempts = failed_logins.get(client)
+    if attempts is not None and len(attempts) >= LOGIN_MAX_ATTEMPTS:
         raise HTTPException(status_code=429, detail="Too many attempts; try again later")
+
+
+def record_failed_login(client: str) -> None:
+    now = time.time()
+    _prune_failed_logins(now)
+    if client not in failed_logins and len(failed_logins) >= LOGIN_TRACKED_CLIENTS:
+        oldest_client = min(failed_logins, key=lambda key: failed_logins[key][-1])
+        failed_logins.pop(oldest_client, None)
+    failed_logins.setdefault(client, deque()).append(now)
 
 
 async def authenticate(client: str, password: str | None) -> bool:
@@ -158,7 +174,7 @@ async def authenticate(client: str, password: str | None) -> bool:
         except UnicodeEncodeError:
             valid = False
         if not valid:
-            failed_logins[client].append(time.time())
+            record_failed_login(client)
             return False
         failed_logins.pop(client, None)
         return True
@@ -174,7 +190,19 @@ async def ingestion_get(path: str, params: dict[str, Any] | None = None) -> Any:
             )
         response.raise_for_status()
         return response.json()
-    except (httpx.HTTPError, ValueError) as error:
+    except httpx.HTTPStatusError as error:
+        logger.warning(
+            "health_data_service_http_error path=%s status=%s",
+            path,
+            error.response.status_code,
+        )
+        raise HTTPException(status_code=502, detail="Health data service unavailable") from error
+    except (httpx.RequestError, ValueError) as error:
+        logger.warning(
+            "health_data_service_unavailable path=%s error=%s",
+            path,
+            type(error).__name__,
+        )
         raise HTTPException(status_code=502, detail="Health data service unavailable") from error
 
 

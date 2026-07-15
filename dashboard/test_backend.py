@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import logging
 import sys
+from collections import deque
 from unittest.mock import AsyncMock
 
+import httpx
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -113,7 +117,7 @@ def test_concurrent_failed_logins_are_rate_limited(monkeypatch):
 
 def test_failed_login_clients_are_bounded(monkeypatch):
     module = load_backend(monkeypatch)
-    monkeypatch.setattr(module, "MAX_LOGIN_CLIENTS", 2)
+    monkeypatch.setattr(module, "LOGIN_TRACKED_CLIENTS", 2)
 
     assert not asyncio.run(module.authenticate("client-1", "wrong-password"))
     assert not asyncio.run(module.authenticate("client-2", "wrong-password"))
@@ -163,3 +167,54 @@ def test_metric_proxy_rejects_non_ascii_identifier(monkeypatch):
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid metric"}
+
+
+def test_rate_limiter_removes_expired_clients(monkeypatch):
+    module = load_backend(monkeypatch)
+    module.failed_logins["expired-client"] = deque([100.0])
+    monkeypatch.setattr(module.time, "time", lambda: 401.0)
+
+    module.check_rate_limit("new-client")
+
+    assert "expired-client" not in module.failed_logins
+    assert "new-client" not in module.failed_logins
+
+
+def test_rate_limiter_bounds_tracked_clients(monkeypatch):
+    module = load_backend(monkeypatch)
+    monkeypatch.setattr(module, "LOGIN_TRACKED_CLIENTS", 2)
+    monkeypatch.setattr(module.time, "time", lambda: 1002.0)
+    module.failed_logins["oldest-client"] = deque([1000.0])
+    module.failed_logins["newer-client"] = deque([1001.0])
+
+    module.record_failed_login("latest-client")
+
+    assert len(module.failed_logins) == 2
+    assert "oldest-client" not in module.failed_logins
+    assert "latest-client" in module.failed_logins
+
+
+def test_upstream_failure_logs_safe_context(monkeypatch, caplog):
+    module = load_backend(monkeypatch)
+
+    class FailingClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, *args, **kwargs):
+            request = httpx.Request("GET", "http://health-ingestion:8787/v1/status")
+            raise httpx.ConnectError("connection failed", request=request)
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", lambda **kwargs: FailingClient())
+
+    with caplog.at_level(logging.WARNING, logger=module.__name__):
+        with pytest.raises(HTTPException) as captured:
+            asyncio.run(module.ingestion_get("/v1/status"))
+
+    assert captured.value.status_code == 502
+    assert "path=/v1/status" in caplog.text
+    assert "error=ConnectError" in caplog.text
+    assert module.API_TOKEN not in caplog.text
