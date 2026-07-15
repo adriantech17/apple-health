@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -131,3 +132,26 @@ def test_metric_summary_rejects_invalid_identifiers(tmp_path: Path, metric: str)
 
     with pytest.raises(ValueError, match="Invalid metric name"):
         store.metric_summary(metric, 30)
+
+
+def test_metric_summary_returns_empty_for_unknown_metric(tmp_path: Path):
+    store = HealthStore(tmp_path)
+
+    assert store.metric_summary("unknown_metric", 30) == []
+
+
+def test_prune_raw_removes_only_expired_archives(tmp_path: Path):
+    store = HealthStore(tmp_path)
+    old_archive = store.raw_dir / "old.json.gz"
+    recent_archive = store.raw_dir / "recent.json.gz"
+    old_archive.write_bytes(b"old")
+    recent_archive.write_bytes(b"recent")
+    now = datetime.now(UTC).timestamp()
+    os.utime(old_archive, (now - 31 * 86400, now - 31 * 86400))
+    os.utime(recent_archive, (now - 29 * 86400, now - 29 * 86400))
+
+    removed = store.prune_raw(30)
+
+    assert removed == 1
+    assert not old_archive.exists()
+    assert recent_archive.exists()
