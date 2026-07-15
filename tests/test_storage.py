@@ -123,3 +123,11 @@ def test_metric_summary_exposes_sleep_stages(tmp_path: Path):
     assert result[0]["details"]["deep"] == 1.0
     assert result[0]["details"]["rem"] == 2.0
     assert result[0]["details"]["sleep_start"] == "2026-07-09 23:00:00 +0200"
+
+
+@pytest.mark.parametrize("metric", ["../step_count", "step/count", "Métrica"])
+def test_metric_summary_rejects_invalid_identifiers(tmp_path: Path, metric: str):
+    store = HealthStore(tmp_path)
+
+    with pytest.raises(ValueError, match="Invalid metric name"):
+        store.metric_summary(metric, 30)

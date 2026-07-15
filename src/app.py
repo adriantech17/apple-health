@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Path as PathParameter, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.storage import HealthStore
+from src.storage import HealthStore, METRIC_NAME_PATTERN
 
 
 def read_secret(name: str) -> str:
@@ -89,7 +89,7 @@ def status(request: Request) -> dict[str, object]:
 @app.get("/v1/metrics/{metric}")
 def metric(
     request: Request,
-    metric: str = PathParameter(pattern="^[a-z0-9_]+$"),
+    metric: str = PathParameter(pattern=METRIC_NAME_PATTERN),
     days: int = Query(90, ge=1, le=3650),
 ) -> dict[str, object]:
     authorize(request)

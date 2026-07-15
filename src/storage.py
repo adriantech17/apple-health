@@ -18,6 +18,7 @@ import pyarrow.parquet as pq
 
 
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S %z", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d")
+METRIC_NAME_PATTERN = r"^[a-z0-9_]+$"
 
 
 def _canonical(value: Any) -> str:
@@ -244,9 +245,10 @@ class HealthStore:
         return {"imports": imports, "points": points, "last_import_at": last[0] if last else None, "last_automation": last[1] if last else None}
 
     def metric_summary(self, metric: str, days: int) -> list[dict[str, Any]]:
-        safe_metric = metric.replace("/", "").replace("..", "")
-        pattern = self.parquet_dir / f"metric={safe_metric}" / "**" / "*.parquet"
-        if not list((self.parquet_dir / f"metric={safe_metric}").glob("**/*.parquet")):
+        if not re.fullmatch(METRIC_NAME_PATTERN, metric):
+            raise ValueError(f"Invalid metric name: {metric}")
+        pattern = self.parquet_dir / f"metric={metric}" / "**" / "*.parquet"
+        if not list((self.parquet_dir / f"metric={metric}").glob("**/*.parquet")):
             return []
         since = datetime.now(UTC) - timedelta(days=days)
         connection = duckdb.connect()
