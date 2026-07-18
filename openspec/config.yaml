@@ -1,0 +1,71 @@
+schema: spec-driven
+project: apple-health
+strict_tdd: true
+
+context: |
+  Product: Private, single-user Apple Health dashboard for a Raspberry Pi 5 on a local network.
+  Current architecture: FastAPI ingestion API with SQLite metadata, raw JSON archives, Parquet values, and DuckDB reads; dashboard and Compose are not present on main.
+  Target architecture: Modular FastAPI monolith with an authoritative operational store and rebuildable analytics.
+  Backend: Python 3.12+, FastAPI, Uvicorn, SQLite, PyArrow/Parquet, and DuckDB.
+  Delivery: Conventional commits with scope, pull requests, and a 400 authored-line review budget.
+  Priorities: Privacy, data correctness, traceability, reversibility, simple operation, and educational non-diagnostic UX.
+
+testing:
+  detected: "2026-07-18"
+  strict_tdd_source: "Test-runner fallback; no explicit repository Strict TDD marker was found"
+  runners:
+    backend:
+      framework: "pytest 9.0.2"
+      command: "python -m pytest"
+    repository_policy:
+      framework: unittest
+      command: "python -m unittest scripts.test_check_repository"
+  layers:
+    unit: "pytest and unittest"
+    integration: "pytest with FastAPI TestClient and synthetic temporary storage"
+    e2e: null
+  coverage:
+    available: false
+    command: null
+    threshold: 0
+  quality:
+    linter:
+      available: false
+      command: null
+    type_checker:
+      available: false
+      command: null
+    formatter:
+      available: false
+      command: null
+    build:
+      available: false
+      command: null
+
+rules:
+  proposal:
+    - State scope, exclusions, privacy impact, data impact, authentication impact, and rollback.
+    - Distinguish current implementation from accepted target architecture.
+  specs:
+    - Use RFC 2119 keywords and Given/When/Then scenarios.
+    - Define metric semantics, units, timezone behavior, correction selection, and limitations when applicable.
+  design:
+    - Preserve modular-monolith boundaries without introducing network services by default.
+    - Document rationale, reversibility, synthetic-data strategy, and storage migration safeguards.
+  tasks:
+    - Group work into independently verifiable phases and explicit RED-GREEN-REFACTOR cycles.
+    - Forecast the 400 authored-line budget and split autonomous slices when size risk is high.
+  apply:
+    guidelines:
+      - Follow existing patterns and use only synthetic fixtures and temporary data directories.
+      - Preserve authentication boundaries, import history, corrections, units, and explicit timezone semantics; once persisted, regrouping requires an explicit reversible migration.
+      - Before every commit, inspect the complete diff for secrets, health data, generated artifacts, and unrelated changes.
+    tdd: true
+    test_command: "python -m pytest && python scripts/check_repository.py && python -m unittest scripts.test_check_repository && git diff --check"
+  verify:
+    test_command: "python -m pytest && python scripts/check_repository.py && python -m unittest scripts.test_check_repository && git diff --check"
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before destructive deltas and preserve archived changes as an immutable audit trail.
+    - Record verification, rollback, migration, and manual-operation notes.
