@@ -27,9 +27,12 @@ def read_secret(name: str) -> str:
 
 TOKEN = read_secret("HEALTH_API_TOKEN")
 MAX_BODY = int(os.environ.get("MAX_BODY_MB", "128")) * 1024 * 1024
-RETENTION_DAYS = int(os.environ.get("RAW_RETENTION_DAYS", "30"))
 DATA_ROOT = Path(os.environ.get("HEALTH_DATA_DIR", "/data"))
 TIMEZONE = os.environ.get("HEALTH_TIMEZONE", "Europe/Madrid")
+
+if "RAW_RETENTION_DAYS" in os.environ:
+    raise RuntimeError("RAW_RETENTION_DAYS is no longer supported; raw payloads are retained")
+
 store = HealthStore(DATA_ROOT, TIMEZONE)
 
 if len(TOKEN) < 32:
@@ -70,7 +73,6 @@ async def ingest(request: Request) -> dict[str, object]:
     if not isinstance(container, dict) or not isinstance(container.get("metrics"), list):
         raise HTTPException(status_code=422, detail="Expected Health Auto Export JSON v2 with data.metrics")
     result = store.ingest(body, payload, {key.lower(): value for key, value in request.headers.items()})
-    store.prune_raw(RETENTION_DAYS)
     return {
         "import_id": result.import_id,
         "duplicate_request": result.duplicate_request,

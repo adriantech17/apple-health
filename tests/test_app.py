@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import sys
 from datetime import UTC, datetime
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -61,6 +63,42 @@ def test_ingests_health_auto_export_payload(monkeypatch, tmp_path):
     assert ingest.json()["inserted_points"] == 1
     assert metric.status_code == 200
     assert metric.json()["data"][0]["value"] == 4200
+
+
+def test_ingest_does_not_prune_existing_raw_archives(monkeypatch, tmp_path):
+    module = load_app(monkeypatch, tmp_path)
+    old_archive = module.store.raw_dir / "synthetic-old.json.gz"
+    old_archive.write_bytes(b"synthetic")
+    old_timestamp = datetime.now(UTC).timestamp() - 31 * 86400
+    os.utime(old_archive, (old_timestamp, old_timestamp))
+    observed_at = datetime.now(UTC).strftime("%Y-%m-%d 12:00:00 +0000")
+    payload = {
+        "data": {
+            "metrics": [
+                {
+                    "name": "step_count",
+                    "units": "count",
+                    "data": [{"qty": 4200, "date": observed_at}],
+                }
+            ]
+        }
+    }
+
+    response = TestClient(module.app).post(
+        "/v1/ingest",
+        content=json.dumps(payload),
+        headers={"Authorization": f"Bearer {module.TOKEN}"},
+    )
+
+    assert response.status_code == 200
+    assert old_archive.exists()
+
+
+def test_rejects_removed_raw_retention_setting(monkeypatch, tmp_path):
+    monkeypatch.setenv("RAW_RETENTION_DAYS", "30")
+
+    with pytest.raises(RuntimeError, match="RAW_RETENTION_DAYS is no longer supported"):
+        load_app(monkeypatch, tmp_path)
 
 
 def test_rejects_invalid_metric_name(monkeypatch, tmp_path):

@@ -146,8 +146,14 @@ datos sintéticos.
 | `HEALTH_DATA_DIR` | `/data` | Raíz del almacenamiento persistente |
 | `HEALTH_TIMEZONE` | `Europe/Madrid` | Zona horaria para agrupar observaciones por día |
 | `MAX_BODY_MB` | `128` | Tamaño máximo de una petición de ingesta |
-| `RAW_RETENTION_DAYS` | `30` | Retención de los payloads originales comprimidos |
 | `DASHBOARD_ORIGINS` | Vacío | Orígenes permitidos para consultas CORS de solo lectura |
+
+Los payloads originales comprimidos se conservan sin poda automática porque son
+evidencia necesaria para migraciones, correcciones y auditoría. Dimensiona y
+respalda `HEALTH_DATA_DIR`; configurar la variable obsoleta
+`RAW_RETENTION_DAYS` hace fallar el arranque en lugar de prometer una retención
+que ya no se ejecuta. Una política futura requerirá un cambio explícito y
+reversible.
 
 Para un despliegue persistente, los secretos deben montarse como archivos y no
 guardarse en `.env`, imágenes, comandos versionados o documentación.

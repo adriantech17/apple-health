@@ -286,12 +286,3 @@ class HealthStore:
             return summary
         finally:
             connection.close()
-
-    def prune_raw(self, retention_days: int) -> int:
-        threshold = datetime.now(UTC).timestamp() - retention_days * 86400
-        removed = 0
-        for path in self.raw_dir.glob("**/*.json.gz"):
-            if path.stat().st_mtime < threshold:
-                path.unlink()
-                removed += 1
-        return removed
