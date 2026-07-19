@@ -121,7 +121,6 @@ def test_drain_waits_for_admitted_writer_and_blocks_new_writers(tmp_path):
     writer_thread.join(timeout=1)
     operator_thread.join(timeout=1)
     assert not writer_thread.is_alive() and not operator_thread.is_alive() and drained.is_set()
-
 def test_marker_is_durable_private_and_restart_visible(tmp_path, monkeypatch):
     gate = MaintenanceGate(tmp_path)
     gate.activate()
