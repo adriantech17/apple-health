@@ -35,12 +35,12 @@ def _require_private_directory(path: Path) -> os.stat_result:
 def _require_private_tree(root: Path) -> None:
     with _path_neutral("Private dataset could not be verified"):
         for directory, directories, files in root.walk(on_error=lambda error: (_ for _ in ()).throw(error)):
-            for name in directories + files:
+            for name in directories:
+                _require_private_directory(directory / name)
+            for name in files:
                 path = directory / name
                 metadata = path.lstat()
-                if stat.S_ISDIR(metadata.st_mode):
-                    _require_private_directory(path)
-                elif not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
                     raise RuntimeError("Private dataset files must be owned with mode 0600")
 
 
