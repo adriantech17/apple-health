@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.maintenance import GateActive, MaintenanceGate, resolve_data_root
+from src.maintenance import GateActive, MaintenanceGate, _require_private_tree, resolve_data_root
 
 
 def private_dir(path: Path) -> Path:
@@ -22,10 +22,8 @@ def test_direct_layout_preserves_existing_root(tmp_path):
 @pytest.mark.parametrize(("name", "symlink"), [("current", False), ("datasets", True)])
 def test_direct_layout_rejects_malformed_adopted_storage_root(tmp_path, name, symlink):
     sentinel = tmp_path / name
-    if symlink:
-        sentinel.symlink_to("missing")
-    else:
-        sentinel.write_text("interrupted", encoding="utf-8")
+    creator = sentinel.symlink_to if symlink else sentinel.write_text
+    creator("missing" if symlink else "interrupted")
     with pytest.raises(RuntimeError, match="requires pointer mode"):
         resolve_data_root(tmp_path, pointer_layout=False)
 
@@ -57,13 +55,16 @@ def test_pointer_layout_rejects_non_private_directories(tmp_path):
     with pytest.raises(RuntimeError, match="mode 0700"):
         resolve_data_root(tmp_path, pointer_layout=True)
 
-@pytest.mark.parametrize(("method", "operation"), [
-    ("resolve", lambda root: resolve_data_root(root, pointer_layout=True)),
-    ("lstat", lambda root: MaintenanceGate(root).active),
-])
+@pytest.mark.parametrize(("method", "operation"), [("resolve", lambda root: resolve_data_root(root, pointer_layout=True)), ("lstat", lambda root: MaintenanceGate(root).active), ("walk", _require_private_tree)])
 def test_filesystem_errors_do_not_expose_private_paths(tmp_path, monkeypatch, method, operation):
     private = "/private/health/identifying"
-    monkeypatch.setattr(Path, method, Mock(side_effect=OSError(private)))
+    if method == "walk":
+        def fail_walk(*args, on_error=None, **kwargs):
+            on_error(OSError(private))
+            return iter(())
+        monkeypatch.setattr(Path, method, fail_walk)
+    else:
+        monkeypatch.setattr(Path, method, Mock(side_effect=OSError(private)))
     with pytest.raises(RuntimeError) as captured:
         operation(tmp_path)
     assert private not in str(captured.value)
@@ -78,7 +79,6 @@ def test_active_gate_rejects_before_opening_lock(tmp_path, monkeypatch):
 def test_gate_rechecks_marker_after_shared_lock(tmp_path, monkeypatch):
     gate = MaintenanceGate(tmp_path)
     original = gate._open_lock
-
     def open_then_gate():
         descriptor = original()
         gate.activate()
@@ -106,7 +106,6 @@ def test_drain_waits_for_admitted_writer_and_blocks_new_writers(tmp_path):
         with gate.admit():
             admitted.set()
             release.wait(timeout=2)
-
     def operator() -> None:
         with gate.drain():
             drained.set()
@@ -121,22 +120,25 @@ def test_drain_waits_for_admitted_writer_and_blocks_new_writers(tmp_path):
     release.set()
     writer_thread.join(timeout=1)
     operator_thread.join(timeout=1)
-    assert not writer_thread.is_alive() and not operator_thread.is_alive()
-    assert drained.is_set()
+    assert not writer_thread.is_alive() and not operator_thread.is_alive() and drained.is_set()
 
-def test_marker_is_durable_private_and_restart_visible(tmp_path):
+def test_marker_is_durable_private_and_restart_visible(tmp_path, monkeypatch):
     gate = MaintenanceGate(tmp_path)
     gate.activate()
     marker = tmp_path / "maintenance" / "ingestion.gate"
-    assert marker.stat().st_mode & 0o777 == 0o600
-    assert MaintenanceGate(tmp_path).active
+    assert marker.stat().st_mode & 0o777 == 0o600 and MaintenanceGate(tmp_path).active
     marker.parent.chmod(0o755)
-    with pytest.raises(RuntimeError, match="mode 0700"):
-        gate.deactivate()
-    assert marker.exists()
+    for operation in (lambda: gate.active, gate.deactivate):
+        with pytest.raises(RuntimeError, match="mode 0700"):
+            operation()
+        assert marker.exists()
     marker.parent.chmod(0o700)
     gate.deactivate()
     assert not marker.exists()
+    marker.parent.rmdir()
+    monkeypatch.setattr(os, "fsync", sync := Mock())
+    gate.activate()
+    assert sync.call_count == 3
 
 @pytest.mark.parametrize("failed_sync", [1, 2, 3])
 def test_failed_marker_sync_leaves_activation_retryable(tmp_path, monkeypatch, failed_sync):
@@ -152,14 +154,11 @@ def test_failed_marker_sync_leaves_activation_retryable(tmp_path, monkeypatch, f
 def test_failed_marker_removal_sync_is_retryable(tmp_path, monkeypatch):
     gate = MaintenanceGate(tmp_path)
     gate.activate()
-    monkeypatch.setattr(os, "fsync", Mock(side_effect=[OSError("private"), None]))
+    monkeypatch.setattr(os, "fsync", Mock(side_effect=[OSError("private"), None, None, None, None]))
     with pytest.raises(RuntimeError):
         gate.deactivate()
     gate.deactivate()
     assert not gate.active
-
-def test_deactivate_tolerates_concurrent_marker_removal(tmp_path, monkeypatch):
-    gate = MaintenanceGate(tmp_path)
     gate.activate()
     unlink = gate.marker.unlink
     def raced_unlink(*, missing_ok=False):

@@ -20,26 +20,28 @@ def _path_neutral(message: str) -> Iterator[None]:
         raise RuntimeError(message) from None
 
 
-def _require_private_directory(path: Path) -> None:
+def _require_private_directory(path: Path) -> os.stat_result:
     with _path_neutral("Private directory is unavailable"):
         metadata = path.lstat()
     if (
         not stat.S_ISDIR(metadata.st_mode)
-        or stat.S_ISLNK(metadata.st_mode)
         or metadata.st_uid != os.getuid()
         or stat.S_IMODE(metadata.st_mode) != 0o700
     ):
         raise RuntimeError("Private directory must be owned with mode 0700")
+    return metadata
 
 
 def _require_private_tree(root: Path) -> None:
     with _path_neutral("Private dataset could not be verified"):
-        for path in root.rglob("*"):
-            metadata = path.lstat()
-            if stat.S_ISDIR(metadata.st_mode):
-                _require_private_directory(path)
-            elif not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
-                raise RuntimeError("Private dataset files must be owned with mode 0600")
+        for directory, directories, files in root.walk(on_error=lambda error: (_ for _ in ()).throw(error)):
+            for name in directories + files:
+                path = directory / name
+                metadata = path.lstat()
+                if stat.S_ISDIR(metadata.st_mode):
+                    _require_private_directory(path)
+                elif not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
+                    raise RuntimeError("Private dataset files must be owned with mode 0600")
 
 
 def _lexists(path: Path) -> bool:
@@ -78,7 +80,7 @@ class MaintenanceGate:
         self.directory = root / "maintenance"
         self.marker = self.directory / "ingestion.gate"
         self.lock_path = self.directory / "ingestion.lock"
-        self._directory_ready = False
+        self._directory_identity: tuple[int, int] | None = None
 
     @property
     def active(self) -> bool:
@@ -88,16 +90,17 @@ class MaintenanceGate:
             return False
         except OSError:
             raise RuntimeError("Maintenance gate state could not be read") from None
+        _require_private_directory(self.directory)
         self._require_private_file(metadata)
         return True
 
     def _ensure_directory(self) -> None:
         with _path_neutral("Maintenance directory could not be prepared"):
             self.directory.mkdir(mode=0o700, exist_ok=True)
-        _require_private_directory(self.directory)
-        if not self._directory_ready:
+        metadata = _require_private_directory(self.directory)
+        if (identity := (metadata.st_dev, metadata.st_ino)) != self._directory_identity:
             self._sync_directory(self.directory.parent)
-            self._directory_ready = True
+            self._directory_identity = identity
 
     @staticmethod
     def _require_private_file(metadata: os.stat_result) -> None:
@@ -106,9 +109,8 @@ class MaintenanceGate:
 
     def _open_lock(self) -> int:
         self._ensure_directory()
-        flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW
         with _path_neutral("Maintenance path must be a private regular file"):
-            descriptor = os.open(self.lock_path, flags, 0o600)
+            descriptor = os.open(self.lock_path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
             try:
                 os.fchmod(descriptor, 0o600)
                 self._require_private_file(os.fstat(descriptor))
@@ -132,10 +134,9 @@ class MaintenanceGate:
             self._sync_directory()
             return
         temporary = self.directory / f".ingestion.gate.{os.getpid()}.{id(self)}"
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW
         with _path_neutral("Maintenance gate could not be activated"):
             try:
-                descriptor = os.open(temporary, flags, 0o600)
+                descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
                 try:
                     os.fchmod(descriptor, 0o600)
                     os.write(descriptor, b"active\n")
