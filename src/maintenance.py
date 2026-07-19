@@ -12,11 +12,17 @@ class GateActive(RuntimeError):
     """Raised when ingestion is closed or its admission lock is busy."""
 
 
-def _require_private_directory(path: Path) -> None:
+@contextmanager
+def _path_neutral(message: str) -> Iterator[None]:
     try:
-        metadata = path.lstat()
+        yield
     except OSError:
-        raise RuntimeError("Private directory is unavailable") from None
+        raise RuntimeError(message) from None
+
+
+def _require_private_directory(path: Path) -> None:
+    with _path_neutral("Private directory is unavailable"):
+        metadata = path.lstat()
     if (
         not stat.S_ISDIR(metadata.st_mode)
         or stat.S_ISLNK(metadata.st_mode)
@@ -27,15 +33,13 @@ def _require_private_directory(path: Path) -> None:
 
 
 def _require_private_tree(root: Path) -> None:
-    try:
+    with _path_neutral("Private dataset could not be verified"):
         for path in root.rglob("*"):
             metadata = path.lstat()
             if stat.S_ISDIR(metadata.st_mode):
                 _require_private_directory(path)
             elif not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
                 raise RuntimeError("Private dataset files must be owned with mode 0600")
-    except OSError:
-        raise RuntimeError("Private dataset could not be verified") from None
 
 
 def _lexists(path: Path) -> bool:
@@ -54,18 +58,17 @@ def resolve_data_root(configured_root: Path, *, pointer_layout: bool) -> tuple[P
             raise RuntimeError("Adopted storage layout requires pointer mode")
         return configured_root, configured_root
 
-    installation_root = configured_root.resolve(strict=True)
+    with _path_neutral("Installation root could not be resolved"):
+        installation_root = configured_root.resolve(strict=True)
     _require_private_directory(installation_root)
     datasets = installation_root / "datasets"
     legacy = datasets / "legacy"
     _require_private_directory(datasets)
     _require_private_directory(legacy)
     current = installation_root / "current"
-    try:
+    with _path_neutral("Current pointer must select the legacy dataset"):
         if not current.is_symlink() or current.resolve(strict=True) != legacy:
             raise RuntimeError("Current pointer must select the legacy dataset")
-    except OSError:
-        raise RuntimeError("Current pointer must select the legacy dataset") from None
     _require_private_tree(legacy)
     return legacy, installation_root
 
@@ -75,6 +78,7 @@ class MaintenanceGate:
         self.directory = root / "maintenance"
         self.marker = self.directory / "ingestion.gate"
         self.lock_path = self.directory / "ingestion.lock"
+        self._directory_ready = False
 
     @property
     def active(self) -> bool:
@@ -82,46 +86,45 @@ class MaintenanceGate:
             metadata = self.marker.lstat()
         except FileNotFoundError:
             return False
+        except OSError:
+            raise RuntimeError("Maintenance gate state could not be read") from None
         self._require_private_file(metadata)
         return True
 
     def _ensure_directory(self) -> None:
-        try:
-            self.directory.mkdir(mode=0o700)
-        except FileExistsError:
-            pass
+        with _path_neutral("Maintenance directory could not be prepared"):
+            self.directory.mkdir(mode=0o700, exist_ok=True)
         _require_private_directory(self.directory)
+        if not self._directory_ready:
+            self._sync_directory(self.directory.parent)
+            self._directory_ready = True
 
     @staticmethod
     def _require_private_file(metadata: os.stat_result) -> None:
-        if (
-            not stat.S_ISREG(metadata.st_mode)
-            or metadata.st_uid != os.getuid()
-            or stat.S_IMODE(metadata.st_mode) != 0o600
-        ):
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
             raise RuntimeError("Maintenance path must be a private regular file")
 
     def _open_lock(self) -> int:
         self._ensure_directory()
         flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW
-        try:
+        with _path_neutral("Maintenance path must be a private regular file"):
             descriptor = os.open(self.lock_path, flags, 0o600)
-        except OSError:
-            raise RuntimeError("Maintenance path must be a private regular file") from None
-        try:
-            os.fchmod(descriptor, 0o600)
-            self._require_private_file(os.fstat(descriptor))
-            return descriptor
-        except Exception:
-            os.close(descriptor)
-            raise
+            try:
+                os.fchmod(descriptor, 0o600)
+                self._require_private_file(os.fstat(descriptor))
+                return descriptor
+            except Exception:
+                os.close(descriptor)
+                raise
 
-    def _sync_directory(self) -> None:
-        descriptor = os.open(self.directory, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY)
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+    def _sync_directory(self, directory: Path | None = None) -> None:
+        directory = directory or self.directory
+        with _path_neutral("Maintenance directory could not be synchronized"):
+            descriptor = os.open(directory, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
 
     def activate(self) -> None:
         self._ensure_directory()
@@ -130,25 +133,25 @@ class MaintenanceGate:
             return
         temporary = self.directory / f".ingestion.gate.{os.getpid()}.{id(self)}"
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW
-        try:
-            descriptor = os.open(temporary, flags, 0o600)
+        with _path_neutral("Maintenance gate could not be activated"):
             try:
-                os.fchmod(descriptor, 0o600)
-                os.write(descriptor, b"active\n")
-                os.fsync(descriptor)
+                descriptor = os.open(temporary, flags, 0o600)
+                try:
+                    os.fchmod(descriptor, 0o600)
+                    os.write(descriptor, b"active\n")
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+                os.replace(temporary, self.marker)
+                self._sync_directory()
             finally:
-                os.close(descriptor)
-            os.replace(temporary, self.marker)
-            self._sync_directory()
-        finally:
-            temporary.unlink(missing_ok=True)
+                temporary.unlink(missing_ok=True)
 
     def deactivate(self) -> None:
-        if not self.active:
-            self._ensure_directory()
-            self._sync_directory()
-            return
-        self.marker.unlink()
+        self._ensure_directory()
+        if self.active:
+            with _path_neutral("Maintenance gate could not be deactivated"):
+                self.marker.unlink(missing_ok=True)
         self._sync_directory()
 
     @contextmanager
