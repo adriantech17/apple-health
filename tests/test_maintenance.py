@@ -138,7 +138,6 @@ def test_marker_is_durable_private_and_restart_visible(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "fsync", sync := Mock())
     gate.activate()
     assert sync.call_count == 3
-
 @pytest.mark.parametrize("failed_sync", [1, 2, 3])
 def test_failed_marker_sync_leaves_activation_retryable(tmp_path, monkeypatch, failed_sync):
     gate = MaintenanceGate(tmp_path)

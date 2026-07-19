@@ -99,7 +99,8 @@ class MaintenanceGate:
         with _path_neutral("Maintenance directory could not be prepared"):
             self.directory.mkdir(mode=0o700, exist_ok=True)
         metadata = _require_private_directory(self.directory)
-        if missing or (identity := (metadata.st_dev, metadata.st_ino)) != self._directory_identity:
+        identity = (metadata.st_dev, metadata.st_ino)
+        if missing or identity != self._directory_identity:
             self._sync_directory(self.directory.parent)
             self._directory_identity = identity
 
