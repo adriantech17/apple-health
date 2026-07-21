@@ -288,7 +288,7 @@ compatible with the current SQLite store.
 | Legacy archive is removed too early | High | Require encrypted archive, manifest, integrity check, isolated restore, and closed rollback window |
 | Metric absence is interpreted as disabled configuration | Medium | Report only observable receipt/data state; keep expected automation configuration as an external versioned contract |
 | SQLite write contention appears | Medium | Preserve one writer/worker boundary and measure before adding concurrency or another database |
-| Migration exceeds the 400-line review budget | Medium | Deliver autonomous prerequisite/result PRs and split before opening an oversized review |
+| Migration exceeds the approved 1,000-line non-documentation review budget | Medium | Group cohesive phases, report complete and non-documentation diff totals separately, and split before opening an oversized review |
 
 ## Rollback Plan
 
