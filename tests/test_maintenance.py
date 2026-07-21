@@ -76,6 +76,32 @@ def test_active_gate_rejects_before_opening_lock(tmp_path, monkeypatch):
     with pytest.raises(GateActive), gate.admit():
         pass
 
+def test_active_does_not_traverse_symlinked_maintenance_directory(tmp_path, monkeypatch):
+    outside = private_dir(tmp_path / "outside")
+    marker = outside / "ingestion.gate"
+    marker.write_text("active\n", encoding="utf-8")
+    marker.chmod(0o600)
+    (tmp_path / "maintenance").symlink_to(outside, target_is_directory=True)
+    original_lstat = Path.lstat
+    touched: list[Path] = []
+    def tracking_lstat(path):
+        touched.append(path)
+        return original_lstat(path)
+    monkeypatch.setattr(Path, "lstat", tracking_lstat)
+    gate = MaintenanceGate(tmp_path)
+    with pytest.raises(RuntimeError):
+        _ = gate.active
+    assert gate.marker not in touched
+
+def test_concurrent_directory_creation_is_revalidated(tmp_path, monkeypatch):
+    gate = MaintenanceGate(tmp_path)
+    mkdir = os.mkdir
+    def raced_mkdir(path, mode):
+        mkdir(path, mode)
+        raise FileExistsError
+    monkeypatch.setattr(os, "mkdir", raced_mkdir)
+    gate._ensure_directory()
+
 def test_gate_rechecks_marker_after_shared_lock(tmp_path, monkeypatch):
     gate = MaintenanceGate(tmp_path)
     original = gate._open_lock
@@ -89,13 +115,14 @@ def test_gate_rechecks_marker_after_shared_lock(tmp_path, monkeypatch):
 
 def test_busy_lock_fails_without_waiting(tmp_path):
     gate = MaintenanceGate(tmp_path)
-    descriptor = gate._open_lock()
+    descriptor, directory = gate._open_lock()
     fcntl.flock(descriptor, fcntl.LOCK_EX)
     try:
         with pytest.raises(GateActive), gate.admit():
             pass
     finally:
         os.close(descriptor)
+        os.close(directory)
 
 def test_drain_waits_for_admitted_writer_and_blocks_new_writers(tmp_path):
     gate = MaintenanceGate(tmp_path)
@@ -158,11 +185,11 @@ def test_failed_marker_removal_sync_is_retryable(tmp_path, monkeypatch):
     gate.deactivate()
     assert not gate.active
     gate.activate()
-    unlink = gate.marker.unlink
-    def raced_unlink(*, missing_ok=False):
-        unlink()
-        unlink(missing_ok=missing_ok)
-    monkeypatch.setattr(Path, "unlink", lambda path, **kwargs: raced_unlink(**kwargs))
+    unlink = os.unlink
+    def raced_unlink(path, *, dir_fd=None):
+        unlink(path, dir_fd=dir_fd)
+        unlink(path, dir_fd=dir_fd)
+    monkeypatch.setattr(os, "unlink", raced_unlink)
     gate.deactivate()
 
 def test_symlinked_lock_is_rejected(tmp_path):

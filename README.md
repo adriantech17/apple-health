@@ -144,6 +144,7 @@ datos sintéticos.
 | `HEALTH_API_TOKEN` | Sin valor | Token de al menos 32 caracteres |
 | `HEALTH_API_TOKEN_FILE` | Sin valor | Archivo que contiene el token; tiene prioridad sobre la variable directa |
 | `HEALTH_DATA_DIR` | `/data` | Raíz del almacenamiento persistente |
+| `HEALTH_DATA_LAYOUT` | `direct` | `direct` usa la raíz legacy; `pointer` exige `current -> datasets/legacy` |
 | `HEALTH_TIMEZONE` | `Europe/Madrid` | Zona horaria para agrupar observaciones por día |
 | `MAX_BODY_MB` | `128` | Tamaño máximo de una petición de ingesta |
 | `DASHBOARD_ORIGINS` | Vacío | Orígenes permitidos para consultas CORS de solo lectura |
@@ -154,6 +155,10 @@ respalda `HEALTH_DATA_DIR`; configurar la variable obsoleta
 `RAW_RETENTION_DAYS` hace fallar el arranque en lugar de prometer una retención
 que ya no se ejecuta. Una política futura requerirá un cambio explícito y
 reversible.
+
+El layout `pointer` solo se habilita después de adoptar y verificar el árbol
+privado. Para volver al layout anterior antes del cutover, detén la aplicación,
+restaura la raíz legacy original y configura `HEALTH_DATA_LAYOUT=direct`.
 
 Para un despliegue persistente, los secretos deben montarse como archivos y no
 guardarse en `.env`, imágenes, comandos versionados o documentación.

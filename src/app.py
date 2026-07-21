@@ -5,9 +5,12 @@ import json
 import os
 from pathlib import Path
 
+from anyio import CancelScope
 from fastapi import FastAPI, HTTPException, Path as PathParameter, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 
+from src.maintenance import GateActive, MaintenanceGate, resolve_data_root
 from src.storage import HealthStore
 
 
@@ -27,13 +30,20 @@ def read_secret(name: str) -> str:
 
 TOKEN = read_secret("HEALTH_API_TOKEN")
 MAX_BODY = int(os.environ.get("MAX_BODY_MB", "128")) * 1024 * 1024
-DATA_ROOT = Path(os.environ.get("HEALTH_DATA_DIR", "/data"))
+CONFIGURED_DATA_ROOT = Path(os.environ.get("HEALTH_DATA_DIR", "/data"))
+DATA_LAYOUT = os.environ.get("HEALTH_DATA_LAYOUT", "direct")
 TIMEZONE = os.environ.get("HEALTH_TIMEZONE", "Europe/Madrid")
+
+if DATA_LAYOUT not in {"direct", "pointer"}:
+    raise RuntimeError("HEALTH_DATA_LAYOUT must be 'direct' or 'pointer'")
+DATA_ROOT, GATE_ROOT = resolve_data_root(CONFIGURED_DATA_ROOT, pointer_layout=DATA_LAYOUT == "pointer")
+PRIVATE_UMASK_PREVIOUS = os.umask(0o077) if DATA_LAYOUT == "pointer" else None
 
 if "RAW_RETENTION_DAYS" in os.environ:
     raise RuntimeError("RAW_RETENTION_DAYS is no longer supported; raw payloads are retained")
 
 store = HealthStore(DATA_ROOT, TIMEZONE)
+gate = MaintenanceGate(GATE_ROOT)
 
 if len(TOKEN) < 32:
     raise RuntimeError("HEALTH_API_TOKEN must contain at least 32 characters")
@@ -59,20 +69,30 @@ def health() -> dict[str, str]:
 @app.post("/v1/ingest")
 async def ingest(request: Request) -> dict[str, object]:
     authorize(request)
-    content_length = int(request.headers.get("content-length", "0") or 0)
-    if content_length > MAX_BODY:
-        raise HTTPException(status_code=413, detail="Payload too large")
-    body = await request.body()
-    if len(body) > MAX_BODY:
-        raise HTTPException(status_code=413, detail="Payload too large")
     try:
-        payload = json.loads(body)
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        raise HTTPException(status_code=400, detail="Invalid JSON") from error
-    container = payload.get("data", payload) if isinstance(payload, dict) else {}
-    if not isinstance(container, dict) or not isinstance(container.get("metrics"), list):
-        raise HTTPException(status_code=422, detail="Expected Health Auto Export JSON v2 with data.metrics")
-    result = store.ingest(body, payload, {key.lower(): value for key, value in request.headers.items()})
+        admission = gate.admit()
+        await run_in_threadpool(admission.__enter__)
+    except GateActive as error:
+        raise HTTPException(status_code=503, detail="Ingestion temporarily unavailable", headers={"Retry-After": "60"}) from error
+    try:
+        content_length = int(request.headers.get("content-length", "0") or 0)
+        if content_length > MAX_BODY:
+            raise HTTPException(status_code=413, detail="Payload too large")
+        body = await request.body()
+        if len(body) > MAX_BODY:
+            raise HTTPException(status_code=413, detail="Payload too large")
+        try:
+            payload = json.loads(body)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise HTTPException(status_code=400, detail="Invalid JSON") from error
+        container = payload.get("data", payload) if isinstance(payload, dict) else {}
+        if not isinstance(container, dict) or not isinstance(container.get("metrics"), list):
+            raise HTTPException(status_code=422, detail="Expected Health Auto Export JSON v2 with data.metrics")
+        headers = {key.lower(): value for key, value in request.headers.items()}
+        result = await run_in_threadpool(store.ingest, body, payload, headers)
+    finally:
+        with CancelScope(shield=True):
+            await run_in_threadpool(admission.__exit__, None, None, None)
     return {
         "import_id": result.import_id,
         "duplicate_request": result.duplicate_request,
