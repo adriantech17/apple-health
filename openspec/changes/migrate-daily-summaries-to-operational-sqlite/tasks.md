@@ -4,9 +4,10 @@
 
 | Field | Value |
 |---|---|
-| Estimated authored changes | 4,680-6,010 remaining lines across code, tests, scripts, and docs |
-| 400-line budget risk | High |
-| Chained PRs | Required; 16 remaining phases after one merged prerequisite |
+| Estimated authored changes | 4,400-5,630 remaining lines across code, tests, scripts, and docs |
+| Review budget | 1,000 authored non-documentation lines per PR; approved size exception |
+| 400-line budget risk | High; superseded for this change by the approved 1,000-line exception |
+| Chained PRs | Required; 15 remaining phases delivered as 7 cohesive PRs |
 | Delivery strategy | `auto-chain`, stacked to `main` |
 | Test discipline | Strict RED-GREEN-REFACTOR in every implementation PR |
 | Production data | Maintainer-only private operation after all implementation PRs merge |
@@ -16,12 +17,17 @@ Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
 400-line budget risk: High
+Approved size exception: 1,000 authored non-documentation lines per PR
 
-Implementation MUST NOT start from the approval of design alone. Phase 1 already
-merged as the required no-pruning predecessor. Phase 2 starts from a clean,
-updated `main`, not the current dashboard feature branch; every later PR branches
-only after its predecessor merges. Split before opening any PR forecast
-above 360 authored additions plus deletions. Generated evidence,
+Implementation MUST NOT start from the approval of design alone. Phases 1 and 2
+already merged as the no-pruning and maintenance/layout predecessors. Delivery
+group 1 starts from a clean, updated `main`, not the current dashboard feature
+branch; every later PR branches only after its predecessor merges. Split before
+opening any PR forecast above 1,000 authored non-documentation additions plus
+deletions. Documentation-only `*.md` files do not count toward this limit, but
+remain part of complete diff, privacy, correctness, and rollback review. Comments,
+docstrings, embedded strings, tests, scripts, configuration, and generated source
+code are not documentation for budget purposes. Generated evidence,
 databases, JSON, compressed payloads, Parquet, backups, manifests with real
 hashes, and private paths MUST NOT enter Git, CI, PR comments, or agent context.
 
@@ -53,36 +59,46 @@ before GREEN begins. GREEN adds only enough behavior to pass that RED. REFACTOR
 MUST add no behavior or new test case; every discovered case starts another
 RED-GREEN cycle before refactoring resumes.
 
-For every remaining phase, forecast tests, production code, scripts, and docs per
-file in the PR description. After RED and again before review, inspect
-`git diff --numstat origin/main...HEAD` and manually total authored additions plus
-deletions. Phases 2, 3, 7, 8, 13, 15, and 16 are expected split candidates; use
-adjacent `a`/`b` PRs whenever the 360-line guard is reached.
+For every delivery group, forecast tests, production code, scripts, and docs per
+file in the PR description. After RED, ensure every new file is tracked or marked
+`intent-to-add`, inspect `git diff --numstat origin/main`, and manually total
+authored additions plus deletions for every file except documentation-only `*.md`
+files. Before review, repeat against `origin/main...HEAD` from a clean worktree.
+Also report the complete diff including documentation. Use adjacent `a`/`b` PRs
+only when a cohesive group cannot remain below the 1,000-line non-documentation
+guard.
 
-## Phase And PR Chain
+## Delivery Groups And Phase Chain
 
-Each phase is one PR only when its per-file forecast stays at or below 360 lines;
-otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
+Phases retain their numbered RED-GREEN-REFACTOR checkpoints, but adjacent phases
+that produce one independently reversible capability share a PR. Each phase must
+still complete its focused RED before its GREEN begins, and commits should retain
+those review boundaries inside the grouped PR.
 
-| Phase | Goal | Forecast | Focused command | Synthetic harness | Rollback boundary |
-|---:|---|---:|---|---|---|
-| 1 | Stop automatic raw pruning (merged prerequisite) | Merged | `python -m pytest tests/test_storage.py tests/test_app.py` | `tmp_path` legacy store | No rollback; retained raw is required |
-| 2 | Add maintenance gate and pointer-ready layout | 280-380 | `python -m pytest tests/test_maintenance.py tests/test_app.py` | `TestClient`, fake locks/files | Gate off; direct legacy root |
-| 3 | Add constrained operational SQLite schema | 320-390 | `python -m pytest tests/test_storage_schema.py` | Temporary SQLite | Delete unused candidate DB |
-| 4 | Add registry core and total metrics | 260-360 | `python -m pytest tests/test_metric_contracts.py -k total` | Pure synthetic rows | Revert unused registry slice |
-| 5 | Add scalar metric contracts | 280-380 | `python -m pytest tests/test_metric_contracts.py -k scalar` | Pure synthetic rows | Revert scalar entries |
-| 6 | Add composite, sleep, and sparse contracts | 250-350 | `python -m pytest tests/test_metric_contracts.py` | Pure synthetic rows | Revert final entries |
-| 7 | Persist logical imports, receipts, and artifacts | 320-390 | `python -m pytest tests/test_operational_store.py -k 'import or receipt or artifact'` | Faulting temp FS/SQLite | Legacy remains selected |
-| 8 | Persist versions, authority, and current projection | 330-390 | `python -m pytest tests/test_operational_store.py -k 'version or authority or current'` | Temporary operational DB | Projection remains unused |
-| 9 | Integrate live ingestion and freshness | 330-390 | `python -m pytest tests/test_live_ingestion.py tests/test_app.py -k ingest` | `TestClient`, two roots | Select legacy root; no dual-write |
-| 10 | Serve existing reads from operational SQLite | 260-360 | `python -m pytest tests/test_operational_reads.py tests/test_app.py` | `TestClient`, two roots | Select legacy root before receipt |
-| 11 | Stage private reconciliation batches | 330-390 | `python -m pytest tests/test_reconciliation.py -k 'manifest or validate or pending' && python -m unittest scripts.test_check_repository` | Temporary private-like root | Discard pending batch |
-| 12 | Seal batches and explicit absences | 300-380 | `python -m pytest tests/test_reconciliation.py -k 'seal or conflict or absence or replay'` | Temp DB/concurrent reads | Batch remains unsealed |
-| 13 | Build and reconstruct a candidate dataset | 330-390 | `python -m pytest tests/test_storage_migration.py -k 'snapshot or candidate or reconstruct'` | Synthetic legacy/candidate | Discard candidate |
-| 14 | Compare candidate semantics and evidence gaps | 280-380 | `python -m pytest tests/test_storage_migration.py -k 'compare or gap or freshness'` | Independent synthetic stores | Comparator mutates no state |
-| 15 | Verify encrypted backup and isolated restore | 300-390 | `python -m pytest tests/test_restore.py` | Fake Restic/temp repository | Discard restore; keep source |
-| 16 | Implement crash-recoverable cutover | 330-390 | `python -m pytest tests/test_cutover.py tests/test_app.py` | Fake lifecycle/temp pointer | Journal rollback before receipt |
-| 17 | Publish runbook and final synthetic rehearsal | 180-300 | `python -m pytest tests/test_storage_migration.py tests/test_restore.py tests/test_cutover.py && python -m unittest scripts.test_check_repository` | End-to-end synthetic root | Documentation/rehearsal only |
+| Group | Phases | Cohesive outcome | Non-documentation forecast | Rollback boundary |
+|---:|---:|---|---:|---|
+| Merged | 1 | Preserve raw evidence | Merged | No rollback; retained raw is required |
+| Merged | 2 | Maintenance gate and pointer-ready layout | Merged as PRs #15 and #16 | Gate off; direct legacy root |
+| 1 | 3 | Constrained operational SQLite schema | 320-390 | Delete unused candidate DB |
+| 2 | 4-6 | Complete immutable metric contract registry | 750-1,000 | Revert unused registry module |
+| 3 | 7-8 | Operational persistence, authority, and current projection | 650-780 | Legacy remains selected; projection unused |
+| 4 | 9-10 | Operational live ingestion and read API | 590-750 | Select legacy root before first post-cutover live receipt |
+| 5 | 11-12 | Reconciliation staging and atomic seal lifecycle | 630-770 | Discard pending batch or leave it unsealed |
+| 6 | 13-14 | Candidate construction and independent semantic verification | 610-770 | Discard candidate; comparator mutates no state |
+| 7 | 15-17 | Verified recovery, crash-safe cutover, and readiness runbook | 810-1,000 | Discard isolated restore; journal rollback before first post-cutover live receipt |
+
+Run these focused checks after each phase RED-GREEN cycle inside its delivery
+group; the final group review still runs their union and all required checks:
+
+| Group | Focused checks | Synthetic harness |
+|---:|---|---|
+| 1 | `python -m pytest tests/test_storage_schema.py` | Temporary SQLite |
+| 2 | `python -m pytest tests/test_metric_contracts.py` | Pure synthetic rows |
+| 3 | `python -m pytest tests/test_operational_store.py` | Faulting temporary filesystem and SQLite |
+| 4 | `python -m pytest tests/test_live_ingestion.py tests/test_operational_reads.py tests/test_app.py` | `TestClient` and two roots |
+| 5 | `python -m pytest tests/test_reconciliation.py && python -m unittest scripts.test_check_repository` | Temporary private-like root and concurrent reads |
+| 6 | `python -m pytest tests/test_storage_migration.py` | Independent synthetic legacy and candidate stores |
+| 7 | `python -m pytest tests/test_storage_migration.py tests/test_restore.py tests/test_cutover.py tests/test_app.py && python -m unittest scripts.test_check_repository` | Fake Restic/lifecycle and end-to-end synthetic root |
 
 ## Phase 1: Preserve Raw Evidence (Merged Prerequisite)
 
@@ -96,21 +112,21 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   storage responsibility, and run PR 1 checks. Deployment remains a later
   maintainer-only prerequisite in M.1.
 
-## Phase 2: Maintenance And Private Layout (PR 2)
+## Phase 2: Maintenance And Private Layout (Merged Predecessor)
 
-- [ ] 2.1 **RED:** Add synthetic concurrency and restart failures for gate marker
+- [x] 2.1 **RED:** Add synthetic concurrency and restart failures for gate marker
   precheck, nonblocking shared lock, second check under lock, HTTP 503 with
   `Retry-After`, writer drain, GET availability, restrictive permissions, and
   mismatched data/application state. Prove missing/invalid bearer remains 401 and
   performs no gate, lock, body, or storage work.
-- [ ] 2.2 **GREEN:** Implement `src/maintenance.py`, umask/mode/no-follow checks,
+- [x] 2.2 **GREEN:** Implement `src/maintenance.py`, umask/mode/no-follow checks,
   advisory locking, durable marker helpers, and opt-in pointer resolution while
   preserving the direct legacy root before the private layout-adoption step.
-- [ ] 2.3 **REFACTOR:** Centralize durable file operations and injected lock/clock
+- [x] 2.3 **REFACTOR:** Centralize durable file operations and injected lock/clock
   seams; verify no async-loop blocking and record exact rollback to the direct
   legacy path.
 
-## Phase 3: Operational Schema (PR 3)
+## Phase 3: Operational Schema (Delivery Group 1)
 
 - [ ] 3.1 **RED:** Add schema tests for idempotent explicit migration, schema
   state, fixed owner/timezone, all CHECK constraints, composite owner/identity
@@ -125,7 +141,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   policy, inspect query plans for identity/range joins, and remove duplication
   without extending behavior.
 
-## Phase 4: Registry Core And Totals (PR 4)
+## Phase 4: Registry Core And Totals (Delivery Group 2)
 
 - [ ] 4.1 **RED:** Add synthetic valid/invalid fixtures for registry admission,
   Decimal parsing, finite-number rejection, canonical JSON, and the nine approved
@@ -136,7 +152,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 - [ ] 4.3 **REFACTOR:** Share validators/converters, keep metric-specific unit
   declarations explicit, and verify unknown metrics cannot produce versions.
 
-## Phase 5: Scalar Contracts (PR 5)
+## Phase 5: Scalar Contracts (Delivery Group 2)
 
 - [ ] 5.1 **RED:** Add accepted-unit, boundary, malformed, boolean, non-finite,
   fractional oxygen, gait percentage, and no-rescaling counterexamples for all 12
@@ -147,7 +163,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   where safe, deduplicate only dimensionally equivalent validators, and run the
   complete registry suite.
 
-## Phase 6: Composite, Sleep, And Sparse Contracts (PR 6)
+## Phase 6: Composite, Sleep, And Sparse Contracts (Delivery Group 2)
 
 - [ ] 6.1 **RED:** Fail heart-rate ordering/extrema, sleep duration/stage/interval
   consistency, one-minute tolerance, sparse absence, and unit-alignment cases for
@@ -157,7 +173,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 - [ ] 6.3 **REFACTOR:** Stabilize error codes and context fingerprints and prove
   all 25 enabled metrics have valid-shape, accepted-unit, and invalid examples.
 
-## Phase 7: Imports, Receipts, And Durable Artifacts (PR 7)
+## Phase 7: Imports, Receipts, And Durable Artifacts (Delivery Group 3)
 
 - [ ] 7.1 **RED:** Add fault-injection failures for owner/hash idempotency,
   receipt separation, rejected-body retention rules, stage/sync/rename/parent
@@ -169,7 +185,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   raw value/path/hash reaches public logs, and benchmark synthetic artifact work
   without weakening `FULL` durability.
 
-## Phase 8: Versions, Authority, And Current (PR 8)
+## Phase 8: Versions, Authority, And Current (Delivery Group 3)
 
 - [ ] 8.1 **RED:** Fail tests for context-idempotent retry, changed completeness,
   monotonic owner sequence, complete non-regression, later live correction,
@@ -181,7 +197,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 - [ ] 8.3 **REFACTOR:** Consolidate projection updates for live and seal flows,
   remove duplication without changing behavior, and inspect current-range plans.
 
-## Phase 9: Live Ingestion And Freshness (PR 9)
+## Phase 9: Live Ingestion And Freshness (Delivery Group 4)
 
 - [ ] 9.1 **RED:** Add API/store failures for auth-before-body, actual byte bound,
   declared-length rejection, bounded streaming that stops at the actual limit,
@@ -196,7 +212,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 - [ ] 9.3 **REFACTOR:** Inject receipt time and automation provenance, isolate the
   response adapter, remove duplication, and retain privacy-safe errors.
 
-## Phase 10: Operational Reads (PR 10)
+## Phase 10: Operational Reads (Delivery Group 4)
 
 - [ ] 10.1 **RED:** Fail exact inclusive Madrid date ranges, DST boundaries,
   tombstone omission, one-version value/unit/details alignment, `samples=1`,
@@ -209,7 +225,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   path, capture five-year/25-metric query plans and timings, and retain the legacy
   path only for the pre-cutover root and fallback window.
 
-## Phase 11: Stage Reconciliation (PR 11)
+## Phase 11: Stage Reconciliation (Delivery Group 5)
 
 - [ ] 11.1 **RED:** Add private-CLI service failures for synthetic canonical
   manifests, source durability, owner/timezone/scope, explicit identity coverage,
@@ -227,7 +243,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   paths/hashes in ordinary output, and remove duplication without changing the
   RED-defined resume or cleanup boundaries.
 
-## Phase 12: Seal Reconciliation (PR 12)
+## Phase 12: Seal Reconciliation (Delivery Group 5)
 
 - [ ] 12.1 **RED:** Fail approval-hash mismatch, changed source, population error,
   unordered conflict, duplicate batch identity, concurrent reader, transaction
@@ -241,7 +257,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   public route incapable of batch authority, and run the full reconciliation and
   operational-store suites.
 
-## Phase 13: Candidate Builder (PR 13)
+## Phase 13: Candidate Builder (Delivery Group 6)
 
 - [ ] 13.1 **RED:** Add synthetic tests for durable gate/drain, SQLite online WAL
   snapshot, immutable source hashes, layout adoption, candidate state, six-source
@@ -257,7 +273,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 - [ ] 13.3 **REFACTOR:** Consolidate phase transitions and remove duplication
   without changing RED-defined resume, source-integrity, or discard behavior.
 
-## Phase 14: Semantic Comparator (PR 14)
+## Phase 14: Semantic Comparator (Delivery Group 6)
 
 - [ ] 14.1 **RED:** Fail independently calculated owner/metric/date, validity,
   completeness, Decimal value, unit, details, provenance, current/tombstone,
@@ -272,7 +288,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   selection code, add deterministic synthetic golden manifests, and measure
   comparison time/memory without weakening checks.
 
-## Phase 15: Backup And Restore (PR 15)
+## Phase 15: Backup And Restore (Delivery Group 7)
 
 - [ ] 15.1 **RED:** Add fake-executor and temporary-repository tests for gated
   online SQLite copy, complete artifact set, pointer/journal/release/config/secret
@@ -291,7 +307,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   native Pi `restic check --read-data` and offline removable-disk operation, and
   remove duplication without changing the RED-defined readiness gate.
 
-## Phase 16: Crash-Recoverable Cutover (PR 16)
+## Phase 16: Crash-Recoverable Cutover (Delivery Group 7)
 
 - [ ] 16.1 **RED:** Fault every journal, file sync, application-identity/data-pointer, stop/start,
   startup handshake, read-only verification, gate removal, pre-receipt rollback,
@@ -306,7 +322,7 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
   the verified SQLite fallback identity, and remove duplication without adding
   behavior; all route and cutover cases already belong to RED.
 
-## Phase 17: Runbook And Readiness (PR 17)
+## Phase 17: Runbook And Readiness (Delivery Group 7)
 
 - [ ] 17.1 **RED:** Add repository-policy assertions for ignored private artifact
   patterns already blocked in PR 11 and a runbook checklist/link failure covering
@@ -320,9 +336,9 @@ otherwise its adjacent `a`/`b` PRs merge in order before the next phase.
 
 ## Maintainer-Only Private Migration Gate
 
-These steps occur only after every remaining phase PR merges, the maintainer
-separately authorizes private execution, and deployed artifacts are verified.
-They MUST NOT run in CI or against the real dataset by an agent.
+These steps occur only after every remaining delivery-group PR merges, the
+maintainer separately authorizes private execution, and deployed artifacts are
+verified. They MUST NOT run in CI or against the real dataset by an agent.
 
 - [ ] M.1 Confirm private installation paths, owner, `Europe/Madrid`, six source
   files and expected hashes, Restic repository, removable-disk capacity, recovery
@@ -354,10 +370,11 @@ They MUST NOT run in CI or against the real dataset by an agent.
 ## Completion Gate
 
 - [ ] The task plan received explicit maintainer approval before remaining
-  implementation; the Phase 1 prerequisite and every remaining phase PR and
-  required adjacent split merged sequentially with focused and full checks passing.
-- [ ] No PR exceeds 360 forecast or reaches 400 authored additions plus deletions,
-  and no unrelated frontend or deployment infrastructure enters the chain.
+  implementation; the merged predecessors and every remaining delivery-group PR
+  and required adjacent split merged sequentially with focused and full checks.
+- [ ] No PR exceeds 1,000 authored non-documentation additions plus deletions;
+  documentation-only `*.md` changes remain fully reviewed, and no unrelated
+  frontend or deployment infrastructure enters the chain.
 - [ ] Synthetic tests cover every accepted metric, unit, DST boundary, correction,
   missingness, failure boundary, backup, restore, and rollback state.
 - [ ] Current HTTP route, bearer, status, response fields, and empty/error shapes
