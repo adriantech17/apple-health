@@ -326,6 +326,7 @@ def _require_private_file(path: Path) -> os.stat_result:
         not stat.S_ISREG(metadata.st_mode)
         or metadata.st_uid != os.getuid()
         or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_nlink != 1
     ):
         raise RuntimeError("Operational path must be a private regular file")
     return metadata
@@ -409,12 +410,12 @@ class OperationalWriterLock:
                 os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW,
                 0o600,
             )
-            os.fchmod(descriptor, 0o600)
             metadata = os.fstat(descriptor)
             if (
                 not stat.S_ISREG(metadata.st_mode)
                 or metadata.st_uid != os.getuid()
                 or stat.S_IMODE(metadata.st_mode) != 0o600
+                or metadata.st_nlink != 1
             ):
                 raise RuntimeError("Writer lock must be a private regular file")
             try:

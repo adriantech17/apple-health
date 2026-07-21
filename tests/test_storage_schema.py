@@ -43,13 +43,7 @@ def insert_import(db: sqlite3.Connection, import_id: str = "import-1") -> None:
     )
 
 
-def insert_receipt(
-    db: sqlite3.Connection,
-    receipt_id: str,
-    *,
-    kind: str = "live",
-    import_id: str = "import-1",
-) -> None:
+def insert_receipt(db: sqlite3.Connection, receipt_id: str, *, kind: str = "live", import_id: str = "import-1") -> None:
     db.execute(
         """INSERT INTO import_receipts (
                receipt_id, user_id, import_id, kind, parser_version,
@@ -59,11 +53,7 @@ def insert_receipt(
     )
 
 
-def insert_live_authority(
-    db: sqlite3.Connection,
-    receipt_id: str,
-    sequence: int = 1,
-) -> None:
+def insert_live_authority(db: sqlite3.Connection, receipt_id: str, sequence: int = 1) -> None:
     db.execute(
         """INSERT INTO authority_events (
                user_id, authority_sequence, live_receipt_id,
@@ -73,15 +63,7 @@ def insert_live_authority(
     )
 
 
-def insert_value_version(
-    db: sqlite3.Connection,
-    version_id: str,
-    receipt_id: str,
-    *,
-    metric: str = "step_count",
-    local_date: str = "2026-07-20",
-    sequence: int = 1,
-) -> None:
+def insert_value_version(db: sqlite3.Connection, version_id: str, receipt_id: str, *, metric: str = "step_count", local_date: str = "2026-07-20", sequence: int = 1) -> None:
     db.execute(
         """INSERT INTO metric_versions (
                version_id, user_id, receipt_id, metric, local_date, version_kind,
@@ -114,6 +96,12 @@ def test_explicit_creation_is_idempotent_and_does_not_touch_legacy(tmp_path: Pat
     with sqlite3.connect(f"file:{legacy_db}?mode=ro", uri=True) as db:
         assert db.execute("SELECT value FROM evidence").fetchone() == ("synthetic",)
     assert path.read_bytes() == first_schema
+    linked_root = tmp_path / "linked"
+    linked_root.mkdir(mode=0o700)
+    os.link(path, linked_root / "operational.sqlite3")
+    with pytest.raises(RuntimeError, match="private regular file"):
+        validate_operational_database(linked_root / "operational.sqlite3", user_id=USER_ID)
+    (linked_root / "operational.sqlite3").unlink()
 
     with connect_operational(path, read_only=True) as db:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
@@ -409,7 +397,15 @@ def test_writer_lock_is_exclusive_and_rejects_symlink(tmp_path: Path):
 
     lock_path = root / "operational.writer.lock"
     lock_path.unlink()
-    os.symlink(tmp_path / "target", lock_path)
+    target = tmp_path / "target"
+    target.write_text("synthetic")
+    target.chmod(0o644)
+    os.link(target, lock_path)
+    with pytest.raises(RuntimeError, match="private regular file"):
+        OperationalWriterLock(root).acquire()
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+    lock_path.unlink()
+    os.symlink(target, lock_path)
     with pytest.raises(RuntimeError, match="private regular file"):
         OperationalWriterLock(root).acquire()
 
