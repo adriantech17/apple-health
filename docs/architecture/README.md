@@ -48,10 +48,10 @@ de forma incremental:
 
 | Responsabilidad | Implementación actual | Arquitectura objetivo |
 |---|---|---|
-| Interfaz | SPA con React, Vite y Recharts; backend for frontend (BFF) FastAPI separado | El mismo stack frontend servido por la aplicación modular |
+| Interfaz | No hay dashboard ni manifiesto frontend en `main` | SPA con React, Vite y Recharts servida por la aplicación modular |
 | API | FastAPI y Uvicorn para ingesta y consultas | Monolito modular FastAPI con límites internos explícitos |
 | Datos | SQLite para metadatos, Parquet para valores y DuckDB para consultas | Almacén operacional autoritativo; Parquet y DuckDB solo como capa analítica derivada |
-| Despliegue | Docker Compose en Raspberry Pi, con dos contenedores de aplicación | Docker Compose con un desplegable de aplicación y proxy TLS al salir de la LAN de confianza |
+| Despliegue | No hay manifiesto Compose ni imagen de dashboard en `main` | Docker Compose con un desplegable de aplicación y proxy TLS para cualquier acceso privado fuera de loopback |
 
 Los manifiestos de dependencias y el código son la fuente de verdad para las
 versiones instaladas. Los ADR justifican familias tecnológicas y fronteras
@@ -129,6 +129,7 @@ Mientras no exista evidencia que lo requiera, quedan fuera de la arquitectura:
 | [0003](decisions/0003-deploy-with-compose-on-a-single-host.md) | Aceptada | Desplegar con Docker Compose en un único host |
 | [0004](decisions/0004-separate-operational-and-analytical-storage.md) | Aceptada | Separar el almacenamiento operacional del analítico |
 | [0005](decisions/0005-govern-future-health-pattern-guidance.md) | Aceptada | Gobernar la futura orientación sobre patrones de salud mediante revisión fail-closed |
+| [0006](decisions/0006-gate-private-dashboard-publication.md) | Aceptada | Bloquear la publicación privada hasta verificar la frontera completa de release |
 
 ## Mantenimiento
 
