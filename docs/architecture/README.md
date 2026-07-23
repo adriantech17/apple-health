@@ -128,6 +128,7 @@ Mientras no exista evidencia que lo requiera, quedan fuera de la arquitectura:
 | [0002](decisions/0002-use-a-react-spa.md) | Aceptada | Mantener una SPA con React, Vite y Recharts |
 | [0003](decisions/0003-deploy-with-compose-on-a-single-host.md) | Aceptada | Desplegar con Docker Compose en un único host |
 | [0004](decisions/0004-separate-operational-and-analytical-storage.md) | Aceptada | Separar el almacenamiento operacional del analítico |
+| [0005](decisions/0005-govern-future-health-pattern-guidance.md) | Aceptada | Gobernar la futura orientación sobre patrones de salud mediante revisión fail-closed |
 
 ## Mantenimiento
 
