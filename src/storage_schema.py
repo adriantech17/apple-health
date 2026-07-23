@@ -340,6 +340,13 @@ def _sync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
+def _require_private_sidecars(path: Path) -> None:
+    for suffix in ("-wal", "-shm"):
+        sidecar = Path(f"{path}{suffix}")
+        if os.path.lexists(sidecar):
+            _require_private_file(sidecar)
+
+
 class _OperationalConnection(sqlite3.Connection):
     writer: OperationalWriterLock | None = None
 
@@ -360,6 +367,7 @@ class _OperationalConnection(sqlite3.Connection):
 def connect_operational(
     path: Path, *, read_only: bool = True, writer: OperationalWriterLock | None = None
 ) -> sqlite3.Connection:
+    _require_private_sidecars(path)
     before = _require_private_file(path)
     if not read_only:
         if writer is None or not writer.owns(path.parent):
@@ -380,6 +388,7 @@ def connect_operational(
         connection.execute("PRAGMA synchronous=FULL")
         if not read_only:
             connection.execute("PRAGMA journal_mode=WAL")
+            _require_private_sidecars(path)
             connection.writer = writer
             writer._connection_opened()
         return connection

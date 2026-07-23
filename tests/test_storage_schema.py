@@ -21,13 +21,11 @@ USER_ID = "primary-user"
 HASH_A = "a" * 64
 HASH_B = "b" * 64
 
-
 @contextmanager
 def writable(path: Path):
     with OperationalWriterLock(path.parent) as writer:
         with connect_operational(path, read_only=False, writer=writer) as db:
             yield db
-
 
 def create_database(tmp_path: Path) -> Path:
     root = tmp_path / "candidate"
@@ -35,13 +33,11 @@ def create_database(tmp_path: Path) -> Path:
     path = create_operational_database(root, user_id=USER_ID)
     return path
 
-
 def insert_import(db: sqlite3.Connection, import_id: str = "import-1") -> None:
     db.execute(
         "INSERT INTO imports VALUES (?, ?, ?, ?, ?)",
         (import_id, USER_ID, HASH_A, 100, "2026-07-21T12:00:00Z"),
     )
-
 
 def insert_receipt(db: sqlite3.Connection, receipt_id: str, *, kind: str = "live", import_id: str = "import-1") -> None:
     db.execute(
@@ -52,7 +48,6 @@ def insert_receipt(db: sqlite3.Connection, receipt_id: str, *, kind: str = "live
         (receipt_id, USER_ID, import_id, kind, "2026-07-21T12:01:00Z"),
     )
 
-
 def insert_live_authority(db: sqlite3.Connection, receipt_id: str, sequence: int = 1) -> None:
     db.execute(
         """INSERT INTO authority_events (
@@ -61,7 +56,6 @@ def insert_live_authority(db: sqlite3.Connection, receipt_id: str, sequence: int
            ) VALUES (?, ?, ?, 'live', ?)""",
         (USER_ID, sequence, receipt_id, "2026-07-21T12:02:00Z"),
     )
-
 
 def insert_value_version(db: sqlite3.Connection, version_id: str, receipt_id: str, *, metric: str = "step_count", local_date: str = "2026-07-20", sequence: int = 1) -> None:
     db.execute(
@@ -74,7 +68,6 @@ def insert_value_version(db: sqlite3.Connection, version_id: str, receipt_id: st
                      ?, 'complete', 'valid', ?)""",
         (version_id, USER_ID, receipt_id, metric, local_date, HASH_B, sequence),
     )
-
 
 def test_explicit_creation_is_idempotent_and_does_not_touch_legacy(tmp_path: Path):
     legacy = tmp_path / "legacy"
@@ -112,7 +105,6 @@ batch_sources batch_promotions semantic_evidence replay_operations live_freshnes
         assert db.execute("SELECT user_id, timezone FROM users").fetchone() == (USER_ID, "Europe/Madrid")
         assert db.execute("SELECT state FROM dataset_state").fetchone() == ("building",)
 
-
 def test_connection_policy_and_required_indexes(tmp_path: Path):
     path = create_database(tmp_path)
     with writable(path) as db:
@@ -124,10 +116,10 @@ def test_connection_policy_and_required_indexes(tmp_path: Path):
         indexes = {row[0] for row in db.execute("SELECT name FROM sqlite_schema WHERE type='index'")}
         assert {"idx_receipts_import", "idx_receipts_status_time", "idx_versions_identity", "idx_batches_status"} <= indexes
         db.execute("INSERT INTO imports VALUES ('fractional', ?, ?, 1, '2026-07-21T12:00:00.123456+00:00')", (USER_ID, HASH_A))
+        assert all(stat.S_IMODE(Path(f"{path}{suffix}").stat().st_mode) == 0o600 and Path(f"{path}{suffix}").stat().st_nlink == 1 for suffix in ("-wal", "-shm"))
         for import_id, timestamp in (("invalid-date", "2026-02-30T12:00:00Z"), ("invalid-hour", "2026-07-21T24:00:00Z")):
             with pytest.raises(sqlite3.IntegrityError):
                 db.execute("INSERT INTO imports VALUES (?, ?, ?, 1, ?)", (import_id, USER_ID, HASH_B, timestamp))
-
 
 def test_startup_validation_is_read_only_and_rejects_identity_mismatch(tmp_path: Path):
     missing = tmp_path / "missing.sqlite3"
@@ -136,6 +128,17 @@ def test_startup_validation_is_read_only_and_rejects_identity_mismatch(tmp_path:
     assert not missing.exists()
 
     path = create_database(tmp_path)
+    target = tmp_path / "sidecar"
+    target.write_bytes(b"synthetic")
+    target.chmod(0o644)
+    for suffix in ("-wal", "-shm"):
+        sidecar = Path(f"{path}{suffix}")
+        sidecar.unlink(missing_ok=True)
+        os.link(target, sidecar)
+        with pytest.raises(RuntimeError, match="private regular file"):
+            validate_operational_database(path, user_id=USER_ID)
+        assert stat.S_IMODE(target.stat().st_mode) == 0o644
+        sidecar.unlink()
     before = (path.stat().st_mtime_ns, path.read_bytes())
     validate_operational_database(path, user_id=USER_ID)
     assert (path.stat().st_mtime_ns, path.read_bytes()) == before
@@ -144,7 +147,6 @@ def test_startup_validation_is_read_only_and_rejects_identity_mismatch(tmp_path:
         validate_operational_database(path, user_id="another-user")
     with pytest.raises(RuntimeError, match="timezone"):
         validate_operational_database(path, user_id=USER_ID, timezone="UTC")
-
 
 def test_owner_and_current_identity_are_enforced_by_composite_foreign_keys(
     tmp_path: Path,
@@ -180,7 +182,6 @@ def test_owner_and_current_identity_are_enforced_by_composite_foreign_keys(
                 (USER_ID, "step_count", "2026-07-19", "version-1"),
             )
 
-
 def test_authority_source_and_version_lineage_are_relationally_enforced(
     tmp_path: Path,
 ):
@@ -201,7 +202,6 @@ def test_authority_source_and_version_lineage_are_relationally_enforced(
         db.execute("UPDATE import_receipts SET result='rejected' WHERE receipt_id='receipt-2'")
         with pytest.raises(sqlite3.IntegrityError):
             insert_live_authority(db, "receipt-2", 2)
-
 
 def test_pending_versions_and_unsealed_batches_cannot_become_current(tmp_path: Path):
     path = create_database(tmp_path)
@@ -239,7 +239,6 @@ def test_pending_versions_and_unsealed_batches_cannot_become_current(tmp_path: P
                 (USER_ID,),
             )
 
-
 def test_context_fingerprint_is_unique_per_logical_import_identity(tmp_path: Path):
     path = create_database(tmp_path)
     with writable(path) as db:
@@ -251,7 +250,6 @@ def test_context_fingerprint_is_unique_per_logical_import_identity(tmp_path: Pat
         insert_value_version(db, "version-1", "receipt-1", sequence=1)
         with pytest.raises(sqlite3.IntegrityError):
             insert_value_version(db, "version-2", "receipt-2", sequence=2)
-
 
 def test_sealed_batch_authority_cycle_can_commit_atomically(tmp_path: Path):
     path = create_database(tmp_path)
@@ -271,7 +269,6 @@ def test_sealed_batch_authority_cycle_can_commit_atomically(tmp_path: Path):
         db.execute("INSERT INTO metric_current (user_id,metric,local_date,version_id) VALUES (?,'step_count','2026-07-20','version-1')", (USER_ID,))
     with connect_operational(path) as db:
         assert db.execute("SELECT version_id FROM metric_current").fetchone() == ("version-1",)
-
 
 @pytest.mark.parametrize("columns, values", [
     ("version_kind, source_unit, canonical_unit, canonical_value", ("absence", "count", None, None)),
@@ -293,7 +290,6 @@ def test_version_shape_checks_reject_invalid_rows(tmp_path: Path, columns: str, 
                               '2026-07-20', ?, 'pending', {placeholders})""",
                 (USER_ID, HASH_B, *values),
             )
-
 
 def test_query_plans_use_identity_join_and_status_indexes(tmp_path: Path):
     path = create_database(tmp_path)
@@ -333,7 +329,6 @@ def test_query_plans_use_identity_join_and_status_indexes(tmp_path: Path):
         )
         assert "SEARCH c" in join_plan and "SEARCH v" in join_plan
 
-
 def test_startup_rejects_missing_indexes_and_foreign_key_corruption(tmp_path: Path):
     path = create_database(tmp_path)
     with writable(path) as db:
@@ -355,7 +350,6 @@ def test_startup_rejects_missing_indexes_and_foreign_key_corruption(tmp_path: Pa
         db.execute("DROP TRIGGER metric_versions_context_unique")
     with pytest.raises(RuntimeError, match="incomplete"):
         validate_operational_database(other_path, user_id=USER_ID)
-
 
 def test_writer_lock_is_exclusive_and_rejects_symlink(tmp_path: Path):
     root = tmp_path / "candidate"
@@ -408,7 +402,6 @@ def test_writer_lock_is_exclusive_and_rejects_symlink(tmp_path: Path):
     os.symlink(target, lock_path)
     with pytest.raises(RuntimeError, match="private regular file"):
         OperationalWriterLock(root).acquire()
-
 
 def test_concurrent_creation_converges_on_one_database(tmp_path: Path):
     root = tmp_path / "candidate"
