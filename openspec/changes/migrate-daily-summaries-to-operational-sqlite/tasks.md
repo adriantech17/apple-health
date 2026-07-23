@@ -128,16 +128,16 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 3: Operational Schema (Delivery Group 1)
 
-- [ ] 3.1 **RED:** Add schema tests for idempotent explicit migration, schema
+- [x] 3.1 **RED:** Add schema tests for idempotent explicit migration, schema
   state, fixed owner/timezone, all CHECK constraints, composite owner/identity
   foreign keys, indexes, one-writer lock, and rejection of mismatched current
   pointers or authority sources. Startup with a timezone other than the persisted
   `Europe/Madrid` MUST fail before reads or writes, while the legacy database
   remains readable and unchanged when the standalone candidate is created.
-- [ ] 3.2 **GREEN:** Add `src/storage_schema.py` and candidate-only schema creation
+- [x] 3.2 **GREEN:** Add `src/storage_schema.py` and candidate-only schema creation
   for users, state, imports, artifacts, receipts/errors, authority, versions,
   current, batches/sources, and freshness with WAL and `synchronous=FULL`.
-- [ ] 3.3 **REFACTOR:** Keep startup validation read-only, isolate connection
+- [x] 3.3 **REFACTOR:** Keep startup validation read-only, isolate connection
   policy, inspect query plans for identity/range joins, and remove duplication
   without extending behavior.
 
