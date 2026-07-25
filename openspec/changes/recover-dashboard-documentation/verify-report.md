@@ -4,16 +4,17 @@
 
 **PASS WITH RESIDUAL IMPLEMENTATION GATES**
 
-The recovery commit is verified against current `origin/main@ede7d0c`, including
-ADR 0005 from merged PR #20. It is consistent with the active SQLite migration
-tasks and current Engram records. This verifies documentation planning
-only; it does not claim
-that any dashboard, session, Compose deployment, or future SQLite read behavior
-exists.
+The recovery documentation was originally verified against
+`origin/main@ede7d0c`, including ADR 0005 from merged PR #20. Phase 6 was then
+completed after PR #22 merged into `main`. This report preserves that original
+verification boundary and records the post-merge supersession evidence below.
+It verifies documentation planning only; it does not claim that any dashboard,
+session, Compose deployment, or future SQLite read behavior exists.
 
-## Scope And Baseline
+## Original Scope And Baseline
 
-- Current state is backend-only: FastAPI/Uvicorn, SQLite metadata, Parquet metric
+- At the original verification baseline, the state is backend-only:
+  FastAPI/Uvicorn, SQLite metadata, Parquet metric
   values, DuckDB reads, and one bearer boundary; no frontend manifest, dashboard,
   browser session, Compose manifest, or published Pi dashboard exists in `main`.
 - Phase 3 of `migrate-daily-summaries-to-operational-sqlite` is complete. Phases
@@ -40,7 +41,7 @@ exists.
 | Build/release | Full identity binds app/proxy images, effective app/proxy/Compose/security/network configuration, and certificate trust state; measured Pi evidence records reproducible context | PASS |
 | Architecture decision | ADR 0006 preserves the modular-monolith and single-host directions while superseding prototype-as-current and plaintext-private-LAN implications | PASS |
 | Recovery/history | Backup evidence binds the current watermark and complete referenced restore set; isolated restore resolves every artifact; code rollback never restores old data | PASS |
-| Supersession | Legacy plans and PR #3 are conceptually superseded; history and PR #3 remain untouched until replacement merge and separate maintainer approval | PASS |
+| Supersession | The recovery delivery left PR #3 untouched pending replacement merge and separate maintainer approval; the later Phase 6 evidence confirms those gates and the supersession action | PASS |
 
 Representative Given/When/Then coverage includes atomic concurrent login,
 proxy forgery, BFCache, superseded selections, mixed snapshots, edge coverage,
@@ -48,20 +49,32 @@ whole-response rejection,
 manifest/routing failures, negative reachability, resource exhaustion, backup
 writer drain, code-only rollback, quantified accessibility, full-stack identity,
 measured Pi context, registry mismatch, correction semantics, and CSRF origin
-denial. PR #3 tasks `6.1` and `6.2` remain pending as required.
+denial. At this original verification boundary, PR #3 tasks `6.1` and `6.2`
+remained pending as required; they are now complete under the evidence below.
 
-## Evidence
+## Original Verification Evidence
 
 - `.venv/bin/python -m pytest`: PASS, 68 tests.
 - `.venv/bin/python scripts/check_repository.py`: PASS, including staged files.
 - `.venv/bin/python -m unittest scripts.test_check_repository`: PASS, 3 tests.
 - `git diff --cached --check`: PASS for the complete staged recovery diff.
-- Scope inspection: PASS; this recovery includes its OpenSpec directory, the
+- Original scope inspection: PASS; the recovery delivery includes its OpenSpec directory, the
   architecture current-state correction, and ADR 0006. It introduces no product
   code, private values, addresses, hostnames, runtime artifacts, guidance changes,
   Git history mutation, or PR #3 mutation.
 - Runtime implementation evidence: **N/A**, because this is documentation-only
   planning; no runtime behavior is asserted or accepted by this verification.
+
+## Phase 6 Completion Evidence
+
+- PR #22 merged into `main` as
+  `12cf7d316887f206fcdd0041435b8622445de042` on 2026-07-23.
+- PR #3 is closed and unmerged. Its owner supersession comment links PR #22,
+  states that no commits or files were cherry-picked or merged, and preserves
+  the branch and discussion as historical evidence:
+  <https://github.com/adriantech17/apple-health/pull/3#issuecomment-5063619109>.
+- The historical PR #3 branch remains available at
+  `015eb9291b9a5d3e12b2397d3add0393471c263a`.
 
 ## Warnings And Blockers
 
@@ -72,11 +85,11 @@ denial. PR #3 tasks `6.1` and `6.2` remain pending as required.
   separate dashboard read-contract product change remains a hard prerequisite.
 - Residual: this is documentary evidence only. No runtime, network, accessibility,
   backup, restore, or native Pi behavior has been implemented or demonstrated.
-- Base check: merged PR #20 and ADR 0005 are present in `origin/main`; this change
-  has no unresolved stack dependency.
+- Original base check: merged PR #20 and ADR 0005 are present in the verification
+  base. Phase 6 separately confirms the replacement merge on current `main`.
 
 ## Budget
 
-The staged recovery commit contains 1,911 additions and 2 deletions across 11
-paths, for exactly 1,913 changed lines. The recovery change
+The original staged recovery commit contains 1,911 additions and 2 deletions
+across 11 paths, for exactly 1,913 changed lines. The recovery change
 remains under its approved 2,500-line review budget.

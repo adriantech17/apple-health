@@ -65,5 +65,5 @@ Chain strategy: size-exception
 
 ## Phase 6: PR #3 Supersession
 
-- [ ] 6.1 After replacement merge, prepare a PR #3 comment linking the baseline and explaining why no code was copied or cherry-picked.
-- [ ] 6.2 Only then, and with maintainer approval, post the comment and close PR #3 as superseded; do not merge or delete its history.
+- [x] 6.1 After replacement merge, prepare a PR #3 comment linking the baseline and explaining why no code was copied or cherry-picked.
+- [x] 6.2 Only then, and with maintainer approval, post the comment and close PR #3 as superseded; do not merge or delete its history.
