@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "byte_count": 6470,
+      "destination_path": "openspec/changes/reclassify-dashboard-future-specs/evidence/recover-dashboard-future-specs/accessible-descriptive-dashboard/spec.md",
+      "sha256": "75aff88eeb257bb223041ce1db5ca35d6e7204649a1d3f1a55143e5ccfdb4781",
+      "source_blob_sha1": "d569fd37b7e598a1007d1b422cfdcba4aa46057a",
+      "source_path": "openspec/changes/recover-dashboard-documentation/specs/accessible-descriptive-dashboard/spec.md"
+    },
+    {
+      "byte_count": 12657,
+      "destination_path": "openspec/changes/reclassify-dashboard-future-specs/evidence/recover-dashboard-future-specs/dashboard-operational-data/spec.md",
+      "sha256": "b3f34054ddb652e6e7ffcd376f92820b9e01080dd80eb3d71dae513f6b10911d",
+      "source_blob_sha1": "10b6a7bb86dab865c203b1d609417f67b0fac6ff",
+      "source_path": "openspec/changes/recover-dashboard-documentation/specs/dashboard-operational-data/spec.md"
+    },
+    {
+      "byte_count": 13530,
+      "destination_path": "openspec/changes/reclassify-dashboard-future-specs/evidence/recover-dashboard-future-specs/dashboard-release-baseline/spec.md",
+      "sha256": "459b47514d9f35e8dc3061d10757f2169c9380b311cc511dfc9bbfe40449c53f",
+      "source_blob_sha1": "79810d9ed6f51f366c578df4ed13cd25eeee7d29",
+      "source_path": "openspec/changes/recover-dashboard-documentation/specs/dashboard-release-baseline/spec.md"
+    },
+    {
+      "byte_count": 10601,
+      "destination_path": "openspec/changes/reclassify-dashboard-future-specs/evidence/recover-dashboard-future-specs/private-dashboard-access/spec.md",
+      "sha256": "aab8cbd6faf14e66d3d74e646853f16199f0878aba43a413704845fe59020cab",
+      "source_blob_sha1": "0978d17ade5072216cea15bdab11707a89e95ab6",
+      "source_path": "openspec/changes/recover-dashboard-documentation/specs/private-dashboard-access/spec.md"
+    }
+  ],
+  "protected_narrative_commit": "14dd29f03fe08d35a89b6ec23bbd07fbbb02eb36",
+  "protected_narratives": [
+    {
+      "byte_count": 26567,
+      "path": "openspec/changes/recover-dashboard-documentation/design.md",
+      "sha256": "03a8c3a24176b090ab8e511eb39fb785d9fcc55ce2543e61335ddde5db6d966f",
+      "source_blob_sha1": "cff19ffae2a69ca8d63195aa23bfd8fa120646a9"
+    },
+    {
+      "byte_count": 7578,
+      "path": "openspec/changes/recover-dashboard-documentation/exploration.md",
+      "sha256": "28135872bb4b654f299f9b83f52ec84a054a2df12d800edbc825d106514bae53",
+      "source_blob_sha1": "6429ecb63d87b27ede26e518456b74308fe25fd7"
+    },
+    {
+      "byte_count": 14538,
+      "path": "openspec/changes/recover-dashboard-documentation/proposal.md",
+      "sha256": "9a2d937521984565c8d80bc8138954f28a9ed329e01446b676b27d126ea0d1eb",
+      "source_blob_sha1": "ab8732903105c55a9b7ba36571c735af05203016"
+    },
+    {
+      "byte_count": 5518,
+      "path": "openspec/changes/recover-dashboard-documentation/tasks.md",
+      "sha256": "b8b8d803e2d3b9a3e32a0e5e6fed04f80a44aa3eeaeb47caac7df3f54a9e0864",
+      "source_blob_sha1": "13be9802762c1490d77aa39370555a8070af7c1f"
+    },
+    {
+      "byte_count": 7164,
+      "path": "openspec/changes/recover-dashboard-documentation/verify-report.md",
+      "sha256": "b70d361de715a2a202c4a37abbb7dd8ea87d28c763219d57886897edb24113c1",
+      "source_blob_sha1": "f7ee8fe55a89d45d022de3e49213d615ac73592a"
+    }
+  ],
+  "schema_version": 1,
+  "source_commit": "12cf7d316887f206fcdd0041435b8622445de042"
+}
