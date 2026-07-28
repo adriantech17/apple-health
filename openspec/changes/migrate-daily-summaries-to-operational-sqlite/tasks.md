@@ -143,34 +143,34 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 4: Registry Core And Totals (Delivery Group 2)
 
-- [ ] 4.1 **RED:** Add synthetic valid/invalid fixtures for registry admission,
+- [x] 4.1 **RED:** Add synthetic valid/invalid fixtures for registry admission,
   Decimal parsing, finite-number rejection, canonical JSON, and the nine approved
   daily-total metrics with every accepted source unit and incompatible units.
-- [ ] 4.2 **GREEN:** Add immutable `src/metric_contracts.py` entries and canonical
+- [x] 4.2 **GREEN:** Add immutable `src/metric_contracts.py` entries and canonical
   conversion for totals, including energy and distance, without period aggregation
   or display rounding.
-- [ ] 4.3 **REFACTOR:** Share validators/converters, keep metric-specific unit
+- [x] 4.3 **REFACTOR:** Share validators/converters, keep metric-specific unit
   declarations explicit, and verify unknown metrics cannot produce versions.
 
 ## Phase 5: Scalar Contracts (Delivery Group 2)
 
-- [ ] 5.1 **RED:** Add accepted-unit, boundary, malformed, boolean, non-finite,
+- [x] 5.1 **RED:** Add accepted-unit, boundary, malformed, boolean, non-finite,
   fractional oxygen, gait percentage, and no-rescaling counterexamples for all 12
   approved scalar daily summaries.
-- [ ] 5.2 **GREEN:** Implement scalar contracts and canonical values while
+- [x] 5.2 **GREEN:** Implement scalar contracts and canonical values while
   preserving each daily summary as one indivisible version.
-- [ ] 5.3 **REFACTOR:** Remove generic conversion branches from legacy storage
+- [x] 5.3 **REFACTOR:** Remove generic conversion branches from legacy storage
   where safe, deduplicate only dimensionally equivalent validators, and run the
   complete registry suite.
 
 ## Phase 6: Composite, Sleep, And Sparse Contracts (Delivery Group 2)
 
-- [ ] 6.1 **RED:** Fail heart-rate ordering/extrema, sleep duration/stage/interval
+- [x] 6.1 **RED:** Fail heart-rate ordering/extrema, sleep duration/stage/interval
   consistency, one-minute tolerance, sparse absence, and unit-alignment cases for
   `heart_rate`, `sleep_analysis`, `vo2_max`, and `cardio_recovery`.
-- [ ] 6.2 **GREEN:** Implement the four contracts with canonical value/details
+- [x] 6.2 **GREEN:** Implement the four contracts with canonical value/details
   from one source row and no interpolation, zero fill, or cross-version fallback.
-- [ ] 6.3 **REFACTOR:** Stabilize error codes and context fingerprints and prove
+- [x] 6.3 **REFACTOR:** Stabilize error codes and context fingerprints and prove
   all 25 enabled metrics have valid-shape, accepted-unit, and invalid examples.
 
 ## Phase 7: Imports, Receipts, And Durable Artifacts (Delivery Group 3)
