@@ -294,9 +294,10 @@ _DDL = (
            SELECT 1 FROM metric_versions AS existing
            JOIN import_receipts AS old_receipt ON old_receipt.receipt_id = existing.receipt_id
            JOIN import_receipts AS new_receipt ON new_receipt.receipt_id = NEW.receipt_id
-           WHERE existing.user_id = NEW.user_id AND old_receipt.import_id = new_receipt.import_id
-             AND existing.metric = NEW.metric AND existing.local_date = NEW.local_date
-             AND existing.context_fingerprint = NEW.context_fingerprint
+            WHERE existing.user_id = NEW.user_id AND old_receipt.import_id = new_receipt.import_id
+              AND existing.metric = NEW.metric AND existing.local_date = NEW.local_date
+              AND old_receipt.kind = new_receipt.kind
+              AND existing.context_fingerprint = NEW.context_fingerprint
        ) BEGIN SELECT RAISE(ABORT, 'duplicate metric context'); END""",
 )
 

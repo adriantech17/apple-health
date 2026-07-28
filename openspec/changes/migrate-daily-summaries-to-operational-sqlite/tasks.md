@@ -175,26 +175,26 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 7: Imports, Receipts, And Durable Artifacts (Delivery Group 3)
 
-- [ ] 7.1 **RED:** Add fault-injection failures for owner/hash idempotency,
+- [x] 7.1 **RED:** Add fault-injection failures for owner/hash idempotency,
   receipt separation, rejected-body retention rules, stage/sync/rename/parent
   sync, existing-target verification, SQLite rollback, and orphan quarantine.
-- [ ] 7.2 **GREEN:** Add operational-store import/receipt/error/artifact methods
+- [x] 7.2 **GREEN:** Add operational-store import/receipt/error/artifact methods
   with content-addressed raw, composite FKs, sanitized diagnostics, and atomic
   receipt transactions over already durable artifacts.
-- [ ] 7.3 **REFACTOR:** Keep filesystem and transaction seams narrow, ensure no
+- [x] 7.3 **REFACTOR:** Keep filesystem and transaction seams narrow, ensure no
   raw value/path/hash reaches public logs, and benchmark synthetic artifact work
   without weakening `FULL` durability.
 
 ## Phase 8: Versions, Authority, And Current (Delivery Group 3)
 
-- [ ] 8.1 **RED:** Fail tests for context-idempotent retry, changed completeness,
+- [x] 8.1 **RED:** Fail tests for context-idempotent retry, changed completeness,
   monotonic owner sequence, complete non-regression, later live correction,
   replay/pending exclusion, unresolved conflicts, batch uniqueness, and explicit
   absence tombstones, including transaction rollback at every projection boundary.
-- [ ] 8.2 **GREEN:** Persist immutable metric versions and authority events and
+- [x] 8.2 **GREEN:** Persist immutable metric versions and authority events and
   update `metric_current` transactionally through one deterministic selection
   function enforced by composite identity constraints.
-- [ ] 8.3 **REFACTOR:** Consolidate projection updates for live and seal flows,
+- [x] 8.3 **REFACTOR:** Consolidate projection updates for live and seal flows,
   remove duplication without changing behavior, and inspect current-range plans.
 
 ## Phase 9: Live Ingestion And Freshness (Delivery Group 4)
