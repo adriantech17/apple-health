@@ -333,6 +333,13 @@ remains non-rebuildable evidence where SQLite lacks pre-baseline history.
 Strict RED-GREEN-REFACTOR tests use minimal synthetic JSON, temporary directories,
 injected clocks, lifecycle harnesses, and fault points.
 
+Implementation sequencing remains transitional: `duckdb` and `pyarrow` stay
+required through phases 9-17 and until cutover and fallback closure are verified.
+Removing them is a later work unit, permitted only after no operational path
+imports them. Final readiness also requires an explicit WAL/checkpoint policy,
+representative Raspberry Pi 5/NVMe measurements, and a proven isolated restore
+after simulated corruption.
+
 | Area | Required evidence |
 |---|---|
 | Schema | Idempotent migration, constraints, indexes, startup state and one writer |
