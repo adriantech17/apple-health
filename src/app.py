@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from src.maintenance import GateActive, MaintenanceGate, resolve_data_root
+from src.live_ingestion import LiveIngestError, OperationalLiveStore
 from src.storage import HealthStore
+from src.storage_schema import DATABASE_NAME, validate_operational_database
 
 
 def read_secret(name: str) -> str:
@@ -33,6 +35,7 @@ MAX_BODY = int(os.environ.get("MAX_BODY_MB", "128")) * 1024 * 1024
 CONFIGURED_DATA_ROOT = Path(os.environ.get("HEALTH_DATA_DIR", "/data"))
 DATA_LAYOUT = os.environ.get("HEALTH_DATA_LAYOUT", "direct")
 TIMEZONE = os.environ.get("HEALTH_TIMEZONE", "Europe/Madrid")
+USER_ID = os.environ.get("HEALTH_USER_ID", "primary-user")
 
 if DATA_LAYOUT not in {"direct", "pointer"}:
     raise RuntimeError("HEALTH_DATA_LAYOUT must be 'direct' or 'pointer'")
@@ -42,7 +45,17 @@ PRIVATE_UMASK_PREVIOUS = os.umask(0o077) if DATA_LAYOUT == "pointer" else None
 if "RAW_RETENTION_DAYS" in os.environ:
     raise RuntimeError("RAW_RETENTION_DAYS is no longer supported; raw payloads are retained")
 
-store = HealthStore(DATA_ROOT, TIMEZONE)
+if DATA_LAYOUT == "pointer" and DATA_ROOT.name == "candidate":
+    operational_database = DATA_ROOT / DATABASE_NAME
+    validate_operational_database(
+        operational_database,
+        user_id=USER_ID,
+        timezone=TIMEZONE,
+        expected_state="ready",
+    )
+    store = OperationalLiveStore(operational_database, user_id=USER_ID, timezone=TIMEZONE)
+else:
+    store = HealthStore(DATA_ROOT, TIMEZONE)
 gate = MaintenanceGate(GATE_ROOT)
 
 if len(TOKEN) < 32:
@@ -61,6 +74,16 @@ def authorize(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def ingest_response(result: object) -> dict[str, object]:
+    return {
+        "import_id": result.import_id,
+        "duplicate_request": result.duplicate_request,
+        "received_points": result.received_points,
+        "inserted_points": result.inserted_points,
+        "payload_sha256": result.payload_sha256,
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -75,31 +98,39 @@ async def ingest(request: Request) -> dict[str, object]:
     except GateActive as error:
         raise HTTPException(status_code=503, detail="Ingestion temporarily unavailable", headers={"Retry-After": "60"}) from error
     try:
-        content_length = int(request.headers.get("content-length", "0") or 0)
+        try:
+            content_length = int(request.headers.get("content-length", "0") or 0)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length") from None
+        if content_length < 0:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length")
         if content_length > MAX_BODY:
             raise HTTPException(status_code=413, detail="Payload too large")
-        body = await request.body()
-        if len(body) > MAX_BODY:
-            raise HTTPException(status_code=413, detail="Payload too large")
-        try:
-            payload = json.loads(body)
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise HTTPException(status_code=400, detail="Invalid JSON") from error
-        container = payload.get("data", payload) if isinstance(payload, dict) else {}
-        if not isinstance(container, dict) or not isinstance(container.get("metrics"), list):
-            raise HTTPException(status_code=422, detail="Expected Health Auto Export JSON v2 with data.metrics")
+        admitted = bytearray()
+        async for chunk in request.stream():
+            if len(admitted) + len(chunk) > MAX_BODY:
+                raise HTTPException(status_code=413, detail="Payload too large")
+            admitted.extend(chunk)
+        body = bytes(admitted)
         headers = {key.lower(): value for key, value in request.headers.items()}
-        result = await run_in_threadpool(store.ingest, body, payload, headers)
+        if isinstance(store, OperationalLiveStore):
+            try:
+                result = await run_in_threadpool(store.ingest, body, headers)
+            except LiveIngestError as error:
+                raise HTTPException(status_code=error.status_code, detail=error.detail) from None
+        else:
+            try:
+                payload = json.loads(body)
+            except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                raise HTTPException(status_code=400, detail="Invalid JSON") from error
+            container = payload.get("data", payload) if isinstance(payload, dict) else {}
+            if not isinstance(container, dict) or not isinstance(container.get("metrics"), list):
+                raise HTTPException(status_code=422, detail="Expected Health Auto Export JSON v2 with data.metrics")
+            result = await run_in_threadpool(store.ingest, body, payload, headers)
     finally:
         with CancelScope(shield=True):
             await run_in_threadpool(admission.__exit__, None, None, None)
-    return {
-        "import_id": result.import_id,
-        "duplicate_request": result.duplicate_request,
-        "received_points": result.received_points,
-        "inserted_points": result.inserted_points,
-        "payload_sha256": result.payload_sha256,
-    }
+    return ingest_response(result)
 
 
 @app.get("/v1/status")

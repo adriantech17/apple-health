@@ -199,29 +199,29 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 9: Live Ingestion And Freshness (Delivery Group 4)
 
-- [ ] 9.1 **RED:** Add API/store failures for auth-before-body, actual byte bound,
+- [x] 9.1 **RED:** Add API/store failures for auth-before-body, actual byte bound,
   declared-length rejection, bounded streaming that stops at the actual limit,
   exact `Default` JSON v2 contract, today/yesterday Madrid dates, proven/unknown
   closure, DST, all-invalid 422, degraded siblings, duplicate context, four
   freshness dimensions, first-persisted-receipt rollback closure, and crash
   behavior for rejected, duplicate, and degraded receipts.
-- [ ] 9.2 **GREEN:** Route live normalization and operational transactions through
+- [x] 9.2 **GREEN:** Route live normalization and operational transactions through
   the new store when a verified candidate root is selected; preserve bearer,
   statuses, five success fields, and legacy behavior on the legacy root without
   dual-writing.
-- [ ] 9.3 **REFACTOR:** Inject receipt time and automation provenance, isolate the
+- [x] 9.3 **REFACTOR:** Inject receipt time and automation provenance, isolate the
   response adapter, remove duplication, and retain privacy-safe errors.
 
 ## Phase 10: Operational Reads (Delivery Group 4)
 
-- [ ] 10.1 **RED:** Fail exact inclusive Madrid date ranges, DST boundaries,
+- [x] 10.1 **RED:** Fail exact inclusive Madrid date ranges, DST boundaries,
   tombstone omission, one-version value/unit/details alignment, `samples=1`,
   empty result, identifier validation, status meanings, and shared-bearer route
   compatibility.
-- [ ] 10.2 **GREEN:** Implement indexed SQLite current reads and status projection
+- [x] 10.2 **GREEN:** Implement indexed SQLite current reads and status projection
   behind root/schema-state selection; operational reads MUST NOT open raw,
   Parquet, DuckDB, pending batches, or replay versions.
-- [ ] 10.3 **REFACTOR:** Remove generic operational aggregation from the SQLite
+- [x] 10.3 **REFACTOR:** Remove generic operational aggregation from the SQLite
   path, capture five-year/25-metric query plans and timings, and retain the legacy
   path only for the pre-cutover root and fallback window.
 

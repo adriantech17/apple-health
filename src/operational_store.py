@@ -262,6 +262,7 @@ class OperationalStore:
         contract_valid: bool,
         errors: Sequence[ReceiptError] = (),
         versions: Sequence[VersionCandidate] = (),
+        latest_complete_local_date: str | None = None,
     ) -> ReceiptRecord:
         if kind not in {"live", "replay"} or result not in {
             "accepted",
@@ -275,6 +276,12 @@ class OperationalStore:
             _validate_error(error)
         for version in versions:
             _validate_candidate(version, kind)
+        if latest_complete_local_date is not None:
+            try:
+                if date.fromisoformat(latest_complete_local_date).isoformat() != latest_complete_local_date:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Invalid freshness date") from None
 
         candidates: dict[tuple[str, str], VersionCandidate] = {}
         conflicts: set[tuple[str, str]] = set()
@@ -424,6 +431,36 @@ class OperationalStore:
                         {(version.metric, version.local_date) for version in new_versions},
                     )
                     self._fault("after_projection")
+                if kind == "live":
+                    db.execute(
+                        "INSERT OR IGNORE INTO live_freshness (user_id) VALUES (?)",
+                        (self.user_id,),
+                    )
+                    assignments = ["latest_authenticated_receipt_id=?"]
+                    values: list[str] = [receipt_id]
+                    if result in {"accepted", "degraded"}:
+                        assignments.append("latest_committed_receipt_id=?")
+                        values.append(receipt_id)
+                    if result == "accepted":
+                        assignments.append("latest_clean_receipt_id=?")
+                        values.append(receipt_id)
+                    if latest_complete_local_date is not None:
+                        assignments.append(
+                            "latest_complete_local_date=MAX(COALESCE(latest_complete_local_date,''),?)"
+                        )
+                        values.append(latest_complete_local_date)
+                    db.execute(
+                        f"UPDATE live_freshness SET {','.join(assignments)} WHERE user_id=?",
+                        (*values, self.user_id),
+                    )
+                    db.execute(
+                        """UPDATE dataset_state
+                           SET first_post_cutover_live_receipt_id=?
+                           WHERE user_id=? AND cutover_phase IN ('cutover','accepted')
+                             AND first_post_cutover_live_receipt_id IS NULL""",
+                        (receipt_id, self.user_id),
+                    )
+                    self._fault("after_freshness")
                 self._fault("before_sqlite_commit")
                 db.commit()
             _sync_directory(self.root)

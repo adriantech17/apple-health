@@ -27,16 +27,20 @@ def test_direct_layout_rejects_malformed_adopted_storage_root(tmp_path, name, sy
     with pytest.raises(RuntimeError, match="requires pointer mode"):
         resolve_data_root(tmp_path, pointer_layout=False)
 
-def test_pointer_layout_accepts_only_private_legacy_dataset(tmp_path):
+def test_pointer_layout_accepts_only_known_private_datasets(tmp_path):
     tmp_path.chmod(0o700)
     datasets = private_dir(tmp_path / "datasets")
     legacy = private_dir(datasets / "legacy")
     (tmp_path / "current").symlink_to(Path("datasets/legacy"))
     assert resolve_data_root(tmp_path, pointer_layout=True) == (legacy, tmp_path)
     (tmp_path / "current").unlink()
-    private_dir(datasets / "candidate")
+    candidate = private_dir(datasets / "candidate")
     (tmp_path / "current").symlink_to(Path("datasets/candidate"))
-    with pytest.raises(RuntimeError, match="legacy dataset"):
+    assert resolve_data_root(tmp_path, pointer_layout=True) == (candidate, tmp_path)
+    (tmp_path / "current").unlink()
+    private_dir(datasets / "unknown")
+    (tmp_path / "current").symlink_to(Path("datasets/unknown"))
+    with pytest.raises(RuntimeError, match="known dataset"):
         resolve_data_root(tmp_path, pointer_layout=True)
 
 def test_pointer_layout_rejects_unsafe_dataset_children(tmp_path):
