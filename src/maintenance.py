@@ -83,11 +83,14 @@ def resolve_data_root(configured_root: Path, *, pointer_layout: bool) -> tuple[P
     _require_private_directory(datasets)
     _require_private_directory(legacy)
     current = installation_root / "current"
-    with _path_neutral("Current pointer must select the legacy dataset"):
-        if not current.is_symlink() or current.resolve(strict=True) != legacy:
-            raise RuntimeError("Current pointer must select the legacy dataset")
-    _require_private_tree(legacy)
-    return legacy, installation_root
+    candidate = datasets / "candidate"
+    with _path_neutral("Current pointer must select a known dataset"):
+        selected = current.resolve(strict=True) if current.is_symlink() else None
+        if selected not in {legacy, candidate}:
+            raise RuntimeError("Current pointer must select a known dataset")
+    _require_private_directory(selected)
+    _require_private_tree(selected)
+    return selected, installation_root
 
 
 class MaintenanceGate:

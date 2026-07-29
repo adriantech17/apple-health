@@ -7,6 +7,7 @@ import stat
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 DATABASE_NAME = "operational.sqlite3"
@@ -29,7 +30,7 @@ _DDL = (
        )""",
     """CREATE TABLE users (
            user_id TEXT PRIMARY KEY CHECK (length(user_id) BETWEEN 1 AND 128),
-           timezone TEXT NOT NULL CHECK (timezone = 'Europe/Madrid'),
+           timezone TEXT NOT NULL CHECK (length(timezone) > 0),
            contract_version TEXT NOT NULL CHECK (length(contract_version) > 0),
            next_authority_sequence INTEGER NOT NULL DEFAULT 1
                CHECK (next_authority_sequence >= 1)
@@ -305,6 +306,13 @@ _LOCKS_GUARD = threading.Lock()
 _WRITER_LOCKS: dict[Path, threading.Lock] = {}
 
 
+def _require_iana_timezone(timezone: str) -> None:
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise ValueError("Invalid operational timezone") from None
+
+
 def _require_private_directory(path: Path) -> None:
     try:
         metadata = path.lstat()
@@ -483,8 +491,7 @@ def create_operational_database(
 ) -> Path:
     if not user_id or len(user_id) > 128:
         raise ValueError("Invalid operational owner")
-    if timezone != DATASET_TIMEZONE:
-        raise ValueError("Operational timezone must be Europe/Madrid")
+    _require_iana_timezone(timezone)
     _require_private_directory(root)
     path = root / DATABASE_NAME
     created = False
@@ -540,6 +547,7 @@ def validate_operational_database(
     expected_state: str | None = None,
 ) -> None:
     try:
+        _require_iana_timezone(timezone)
         with connect_operational(path, read_only=True) as db:
             if db.execute("PRAGMA application_id").fetchone() != (APPLICATION_ID,):
                 raise RuntimeError("Operational schema identity is invalid")
@@ -563,8 +571,6 @@ def validate_operational_database(
             owners = db.execute("SELECT user_id, timezone FROM users").fetchall()
             if owners != [(user_id, timezone)]:
                 raise RuntimeError("Operational owner or timezone identity is invalid")
-            if timezone != DATASET_TIMEZONE:
-                raise RuntimeError("Operational timezone identity is invalid")
             states = db.execute("SELECT state FROM dataset_state").fetchall()
             if len(states) != 1 or (expected_state is not None and states != [(expected_state,)]):
                 raise RuntimeError("Operational dataset state is invalid")
@@ -578,5 +584,7 @@ def validate_operational_database(
                 raise RuntimeError("Operational integrity check failed")
     except RuntimeError:
         raise
+    except ValueError:
+        raise RuntimeError("Operational timezone identity is invalid") from None
     except (OSError, sqlite3.Error):
         raise RuntimeError("Operational database is unavailable") from None

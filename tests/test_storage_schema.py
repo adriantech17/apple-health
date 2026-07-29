@@ -148,6 +148,21 @@ def test_startup_validation_is_read_only_and_rejects_identity_mismatch(tmp_path:
     with pytest.raises(RuntimeError, match="timezone"):
         validate_operational_database(path, user_id=USER_ID, timezone="UTC")
 
+    new_york = tmp_path / "new-york"
+    new_york.mkdir(mode=0o700)
+    new_york_path = create_operational_database(
+        new_york, user_id=USER_ID, timezone="America/New_York"
+    )
+    validate_operational_database(
+        new_york_path, user_id=USER_ID, timezone="America/New_York"
+    )
+    with pytest.raises(RuntimeError, match="timezone"):
+        validate_operational_database(new_york_path, user_id=USER_ID)
+    with pytest.raises(RuntimeError, match="timezone"):
+        validate_operational_database(new_york_path, user_id=USER_ID, timezone="Invalid/Zone")
+    with pytest.raises(ValueError, match="timezone"):
+        create_operational_database(new_york, user_id=USER_ID, timezone="Invalid/Zone")
+
 def test_owner_and_current_identity_are_enforced_by_composite_foreign_keys(
     tmp_path: Path,
 ):
