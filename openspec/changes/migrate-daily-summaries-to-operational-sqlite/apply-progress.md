@@ -4,14 +4,14 @@
 
 - Mode: Strict TDD
 - Artifact store: OpenSpec
-- Assigned batch: Delivery Group 4, phases 9-10
-- Cumulative completed tasks: 1.1-10.3
-- Newly completed tasks: 9.1-10.3
-- Next pending task: 11.1
-- Delivery boundary: One PR-ready operational live-ingestion and indexed-read API work unit based on `aaf8adb`
-- Recorded DG4 recovery snapshot budget: 952 non-documentation additions plus deletions; 1,052 total additions plus deletions
-- Auto-chain threshold: Not triggered; this work unit remains below the approved 1,000-line limit
-- Prior evidence: Delivery Groups 2-3 task, test, correction, and rollback evidence remains unchanged below
+- Assigned batch: Phase 11, Stage Reconciliation (stacked slice 1 targeting `main`)
+- Cumulative completed tasks: 1.1-11.3
+- Newly completed tasks: 11.1-11.3
+- Next pending task: 12.1
+- Delivery boundary: Manifest-bound staging, pending validation, private CLI, and repository policy only; no seal or authority promotion
+- Phase 11 review budget after the automatic gatekeeper retry: 997 non-documentation additions plus deletions; 1,115 total additions plus deletions against `387a66f1d2ddd3b249b19f4a8f2de9211760c142`
+- Auto-chain decision: Phase 11 is the first of two separately reviewable stacked slices; Phase 12 remains dependent and unimplemented
+- Prior evidence: Delivery Groups 2-4 task, test, correction, and rollback evidence remains unchanged below
 
 ## Delivery Group 4 Result Contract
 
@@ -26,6 +26,22 @@ artifacts:
   - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
 next_recommended: sdd-verify
 risks: Representative Raspberry Pi 5/NVMe timing remains a later readiness requirement.
+skill_resolution: paths-injected
+```
+
+## Phase 11 Result Contract
+
+```yaml
+status: success
+executive_summary: >-
+  Phase 11 tasks 11.1-11.3 added canonical manifest-bound reconciliation
+  staging, durable source artifacts, pending-only versions and tombstones,
+  exact-hash resume, a private CLI adapter, and tracked-artifact policy guards.
+artifacts:
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/tasks.md
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
+next_recommended: sdd-apply task 12.1 as a dependent stacked slice
+risks: Semantic evidence production and atomic sealing remain intentionally absent until phases 12 and 14.
 skill_resolution: paths-injected
 ```
 
@@ -63,6 +79,9 @@ execution that did not occur.
 | 10.2 | `tests/test_operational_reads.py`, `tests/test_app.py` | Integration | Phase-9 focused suite: 13 passed | Shared phase-10 RED produced missing-method failures on direct and HTTP reads | Shared phase-10 GREEN exited 0 with 7 passed | SQLite-only `metric_current` join, status meanings, root/schema selection, shared bearer and legacy fallback isolation | Indexed row adapter extraction retained 7 passing cases |
 | 10.3 | `tests/test_operational_reads.py` | Integration/performance | Phase-10 GREEN: 7 passed | Shared phase-10 RED proved no operational read path existed; supplemental replay-status RED exited 1 with 1 failed, 6 deselected | Phase-10 GREEN and replay exclusion GREEN each exited 0 | Five years × 25 metrics = 45,650 current rows; plan asserted indexed `SEARCH c` and `SEARCH v` with no `SCAN`; read asserted under 2.0s | `python -m pytest tests/test_operational_reads.py -q --durations=3` exited 0 with 7 passed in 3.24s; slowest complete seed/plan/read case was 2.92s |
 | DG4 recovery | `tests/test_operational_reads.py`, `tests/test_storage_schema.py` | Production-path integration | Existing focused files: 23 passed | Production selector failed: 1 failed, 7 deselected; schema identity selector failed: 1 failed, 14 deselected; both rejected `America/New_York` creation | Production selector: 1 passed, 7 deselected; schema selector: 1 passed, 14 deselected | Default Madrid, valid New York, invalid IANA, and persisted/configured mismatch paths | Shared IANA validator required no further refactor; focused files remained green: 23 passed |
+| 11.1 | `tests/test_reconciliation.py`, `scripts/test_check_repository.py` | Integration/policy | Existing operational store: 22 passed; policy: 22 passed | Reconciliation RED exited 2 during collection with `ModuleNotFoundError: scripts.reconcile_history`; policy RED exited 1 with missing `PRIVATE_ARTIFACT_PARTS` import | Initial implementation exposed 5 SQL failures and 7 passes, then the corrected focused suite passed 12 tests | Canonical/hash/identity/scope/source branches, sparse omission, explicit absence, pending invisibility, exact resume, Git-root refusal, cleanup, and sanitized output | Shared phase behavior remained green before helper consolidation |
+| 11.2 | `tests/test_reconciliation.py` | Integration | Phase RED observed before production code | Shared phase RED above; partial-write assertion failed 1 with 12 deselected; traversal cleanup failed 1 with 12 deselected; expected-evidence binding failed 1 with 13 deselected; existing owner/payload import reuse failed 1 with 14 deselected | Each supplemental RED passed after its bounded fix; final focused suite passed 15 tests | Partial `os.write`, normalized cleanup escape, exact manifest drift, expected counts/evidence, owner/hash import reuse, sparse values, and tombstones forced non-trivial paths | Manifest/source phase helpers and privacy-safe result adapter retained 15 passing tests |
+| 11.3 | `tests/test_reconciliation.py`, `scripts/test_check_repository.py` | Integration/policy | Phase 11 GREEN: 15 pytest and 23 policy tests passing | The task's refactor boundary is the shared failing phase RED plus four supplemental REDs, all written before their production changes | No new behavior was introduced during refactor; focused union remained green | All RED-defined manifest, durability, resume, cleanup, privacy, idempotency, and policy branches remained covered | Replaced repeated source-set scans with explicit phase sets; final focused command exited 0 with 15 pytest and 23 policy tests |
 
 ## Delivery Group 2 Test Summary
 
@@ -90,6 +109,15 @@ execution that did not occur.
 - **Pure functions created**: 5 source/date/completeness/response-row helpers
 - **Synthetic runtime**: `TestClient`, bounded ASGI receive chunks, two private-like roots, real temporary SQLite/WAL and gzip artifacts, configured Madrid/New York clocks, injected transaction faults, and a 45,650-row plan/timing harness; no private dataset or external service
 
+## Phase 11 Test Summary
+
+- **Total tests written**: 15 pytest reconciliation cases and 1 repository-policy case (23 policy tests total)
+- **Total tests passing**: 15 focused reconciliation; 23 policy; 212 repository-wide
+- **Layers used**: Integration (15), repository policy (1 new), E2E (0)
+- **Approval tests**: None — the new staging module was behavior-driven before refactor
+- **Pure functions/helpers created**: 9 manifest, scope, candidate, publication, and resume helpers
+- **Synthetic runtime**: Temporary mode-0700 roots, mode-0600 canonical manifest/source files, real SQLite/WAL, durable content-addressed artifacts, pending rows, CLI success/failure output, partial writes, and cleanup boundaries; no real reconciliation, migration, cutover, backup, or restore
+
 ## Completed Tasks
 
 - [x] 4.1 RED: totals, units, Decimal, canonical JSON, and rejection fixtures
@@ -113,6 +141,9 @@ execution that did not occur.
 - [x] 10.1 RED: inclusive SQLite ranges, alignment, tombstones, empty/status/auth/no-legacy and performance cases
 - [x] 10.2 GREEN: indexed `metric_current` values and status behind verified candidate selection
 - [x] 10.3 REFACTOR: SQLite-only row adapter, replay exclusion, five-year/25-metric plan and timing evidence
+- [x] 11.1 RED: canonical manifest, source durability, scope/identity, sparse omission, mismatch, pending invisibility, policy, cleanup, privacy, and exact-resume failures
+- [x] 11.2 GREEN: durable manifest/source staging, pending receipts/versions/tombstones, resumable state, private CLI, and tracked-artifact audit
+- [x] 11.3 REFACTOR: consolidated manifest/source phase helpers and privacy-safe output without changing the RED-defined boundaries
 
 ## Delivery Group 2 Work Unit Evidence
 
@@ -165,6 +196,26 @@ execution that did not occur.
 | `git diff --check` | Exit 0 with no output |
 | Branch convention command | Not run by instruction: ledger, review, commit, issue, push, and PR delivery are parent-owned |
 
+## Phase 11 Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test command and exact result | `.venv/bin/python -m pytest tests/test_reconciliation.py -q && .venv/bin/python -m unittest scripts.test_check_repository` exited 0: 15 pytest passed in 0.22s; 23 unittest tests passed in 0.101s. Expected synthetic negative-fixture diagnostics preceded final `OK`. |
+| Runtime harness | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k cli_reports_only_sanitized_counts_and_failures` exited 0: 1 passed, 14 deselected in 0.06s. It invoked the real CLI adapter against isolated temporary synthetic SQLite/source/manifest artifacts and verified sanitized success/failure output. |
+| Rollback boundary | Delete `src/reconciliation.py`, `scripts/reconcile_history.py`, and `tests/test_reconciliation.py`; revert only the Phase 11 additions in `scripts/check_repository.py`, `scripts/test_check_repository.py`, `tasks.md`, and this progress artifact. No sealed batch, authority event, current projection, source dataset, or live route is changed. |
+| Review budget | 973 authored non-documentation additions plus deletions (972 additions, 1 deletion) and 1,048 total additions plus deletions (1,035 additions, 13 deletions) against merged base `387a66f1d2ddd3b249b19f4a8f2de9211760c142`; the non-documentation slice remains below the approved 1,000-line ceiling. |
+
+## Phase 11 Final Verification
+
+| Command | Exact result |
+|---|---|
+| `.venv/bin/python -m pytest tests/test_reconciliation.py -q && .venv/bin/python -m unittest scripts.test_check_repository` | Exit 0: 15 pytest passed; 23 unittest tests passed |
+| `.venv/bin/python -m pytest` | Exit 0: 212 passed in 4.62s |
+| Protected-path-filtered candidate repository audit using `.venv/bin/python` and `scripts.check_repository.main` | Exit 0: repository audit OK, 141 candidate files inspected; `dashboard/` and `.atl/` excluded |
+| `.venv/bin/python -m unittest scripts.test_check_repository` | Exit 0: 23 passed; expected synthetic negative-fixture diagnostics preceded final `OK` |
+| Protected-path-filtered tracked and untracked `git diff --check` equivalents | Exit 0 with no whitespace errors |
+| Branch convention command | Not run by instruction: native ledger, stage, commit, review, issue, push, and PR delivery are parent-owned |
+
 ## Deviations And Constraints
 
 - `src/storage.py` generic conversions remain unchanged for the pre-cutover/fallback `HealthStore`; the verified-candidate path bypasses that aggregation and reads only operational SQLite.
@@ -172,7 +223,7 @@ execution that did not occur.
 - Final readiness still requires a WAL/checkpoint policy, representative Raspberry Pi 5/NVMe measurement, and proven isolated restore after corruption.
 - Final delivery gates, review, commit, push, and PR creation remain parent-owned and were not run here.
 - Delivery Group 4 wires `src/operational_store.py` only when pointer selection resolves a schema-valid `ready` candidate; direct and legacy-pointer roots continue using `HealthStore` without dual-write.
-- Batch staging/sealing remains phases 11-12. This group supplies and verifies the shared promoted-batch/live projection selector but does not implement the batch lifecycle early.
+- Batch staging is now implemented by Phase 11; approval, semantic-evidence admission, sealing, authority allocation, and current projection remain Phase 12+ and are absent from this slice.
 - The first bare `python -m pytest tests/test_storage_schema.py tests/test_metric_contracts.py -q` safety-net attempt exited 127 because `python` was not on the parent shell PATH. The repository-local `.venv` was already present; all recorded TDD and final commands then activated it explicitly without installing or changing dependencies.
 - No production-data operation, schema rewrite, ADR 0004 edit, dashboard/deployment change, dual-write, interpolation, zero-fill, or version combination occurred.
 - Yesterday becomes `complete` only when the exact `Default` source also supplies both existing automation and session identifiers; otherwise its accepted completeness remains `unknown`. Receipt time alone never proves closure.
@@ -196,3 +247,72 @@ Correction budget: 84 additions plus deletions against the frozen candidate; tas
 R4R3-001 runtime ordinal 10 RED: `.venv/bin/python -m pytest tests/test_live_ingestion.py -q -k 'madrid_route_converts_utc_instant or rejects_naive_and_invalid_timestamps'` exited 1: 1 failed, 2 passed, 14 deselected. GREEN / no-refactor rerun exited 0: 3 passed, 14 deselected.
 Final verification: DG4 focused 39 passed; modified/dependent 184 passed; full suite 197 passed; repository audit OK (138 files); audit unittests 22 passed; `git diff --check` clean.
 Correction budget: **47 non-documentation additions plus deletions**; final DG4 snapshot: **979 non-documentation lines** (946 additions, 33 deletions) against `aaf8adb`. Tasks, phases 11+, `.atl/`, review, ledger, delivery, and the Readability WARNING remain unchanged.
+
+## Phase 11 Automatic Gatekeeper Retry
+
+```yaml
+status: success
+executive_summary: >-
+  Corrected the two Phase 11 contract failures: same-hash retained live artifacts
+  now resolve batch and receipt lineage to the durably published batch-source
+  representation, and the CLI normalizes lower-level failures without exposing
+  paths or hashes.
+artifacts:
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
+next_recommended: sdd-apply task 12.1 as the dependent stacked slice
+risks: Phase 12 sealing, authority promotion, cutover, and private execution remain intentionally absent.
+skill_resolution: paths-injected
+```
+
+### Retry TDD Cycle Evidence
+
+| Contract failure | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| Same-hash retained `live_raw` collision | `.venv/bin/python -m pytest tests/test_reconciliation.py -q`: 15 passed | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k same_hash_live_artifact`: 1 failed, 14 deselected; the artifact row remained `live_raw` at the raw path | Same command: 1 passed, 14 deselected after explicit conflict rebinding to the published `batch_source` row | Existing no-collision staging plus retained-live collision cover both insert and conflict paths; both receipt purposes remain linked and the original live file remains present | Full focused file before the second RED: 15 passed; no further production refactor was needed |
+| SQLite, writer-lock, and final directory-sync CLI failures | Phase-11 focused file after cycle 1: 15 passed | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k lower_level_failures`: 3 failed, 15 deselected with uncaught `sqlite3.OperationalError`, `RuntimeError`, and `OSError` | Same command: 3 passed, 15 deselected with exact constant privacy-safe output | Three distinct lower-level exception classes carry a synthetic private path and 64-character hash marker; none reaches output | `.venv/bin/python -m pytest tests/test_reconciliation.py -q`: 18 passed after test-only compaction; production behavior unchanged |
+
+### Retry Test Summary
+
+- **Corrective cases**: one retained-live collision case and three parametrized lower-level CLI failure cases.
+- **Focused tests**: 18 reconciliation tests and 23 repository-policy tests passed.
+- **Synthetic runtime harness**: `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k 'same_hash_live_artifact or cli_reports_only_sanitized_counts_and_failures or cli_sanitizes_lower_level_failures'` exited 0 with 5 passed and 13 deselected.
+- **Full suite**: `.venv/bin/python -m pytest` exited 0 with 215 passed in 4.65s.
+- **Repository audit**: protected-path-filtered candidate audit exited 0 with 141 files inspected; `.venv/bin/python -m unittest scripts.test_check_repository` exited 0 with 23 passed.
+- **Whitespace**: the first wrapper used zsh's read-only `status` name and did not complete; the corrected protected-path-filtered tracked/untracked command used `rc` and exited 0 with no output.
+- **Review budget**: 997 non-documentation additions plus deletions (996 additions, 1 deletion), below the hard 1,000-line ceiling.
+
+### Retry Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test command and exact result | `.venv/bin/python -m pytest tests/test_reconciliation.py -q && .venv/bin/python -m unittest scripts.test_check_repository` exited 0: 18 pytest passed; 23 unittest tests passed. |
+| Runtime harness command and exact result | The five-case CLI and real temporary SQLite/filesystem harness above exited 0: 5 passed, 13 deselected. It performed no real reconciliation, migration, seal, cutover, backup, or restore. |
+| Rollback boundary | Revert only the artifact conflict update in `src/reconciliation.py`, the lower-level CLI exception normalization in `scripts/reconcile_history.py`, their corrective assertions in `tests/test_reconciliation.py`, and this retry section. The Phase 11 staging capability and unrelated prior evidence remain intact; no schema, sealed batch, authority, current projection, source dataset, or live route changed. |
+| Task status | Unchanged: 33/64 tasks complete; 11.1-11.3 remain complete and 12.1 remains the first pending task. |
+| Protected paths | `dashboard/` and `.atl/` were excluded from every repository/diff command and were not read, enumerated, staged, moved, cleaned, deleted, or modified. |
+
+## Ordinary-Review Correction `review-c28497124cb0c91c`
+
+### Correction TDD Cycle Evidence
+
+| Finding | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|
+| Equal normalized source occurrences | `.venv/bin/python -m pytest tests/test_reconciliation.py -q`: 18 passed | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k 'equal_identity_occurrences or distinct_same_kind_batches'`: 2 failed, 18 deselected; equal occurrences yielded 0 versions/2 errors | Same command: 2 passed, 18 deselected | Corrective union added differing-value and value/absence controls: 4 passed, 18 deselected | None needed; corrective union remained green after the final pending-status assertion |
+| Distinct same-kind batch context | Same 18-pass safety net | Same RED command aborted the second batch with `sqlite3.IntegrityError: duplicate metric context` | Same GREEN command retained one version per batch with distinct fingerprints | The first batch plus a second batch reusing the exact logical import exercised both initial and duplicate-context paths | None needed; minimum trusted batch context was passed to existing normalization |
+
+### Correction Work Unit And Verification Evidence
+
+| Evidence | Exact result |
+|---|---|
+| Focused corrective regressions | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k 'equal_identity_occurrences or only_differing_or_value_absence_occurrences or distinct_same_kind_batches'` exited 0: 4 passed, 18 deselected |
+| Relevant reconciliation suite | `.venv/bin/python -m pytest tests/test_reconciliation.py -q` exited 0: 22 passed |
+| Full pytest | `.venv/bin/python -m pytest` exited 0: 219 passed in 5.04s |
+| Repository audit | Protected-path-filtered `scripts.check_repository.main(...)` exited 0: 141 versioned files inspected; the unfiltered wrapper was not run because it reads forbidden `dashboard/` and `.atl/` paths |
+| Repository-policy unittests | `.venv/bin/python -m unittest scripts.test_check_repository` exited 0: 23 passed in 0.114s; expected synthetic negative-fixture diagnostics preceded final `OK` |
+| Whitespace | `git diff --check` limited to the seven frozen review paths exited 0 with no output |
+| Runtime harness | The focused tests used real temporary SQLite/WAL, two synthetic source receipts, one reused logical import across two pending batches, and no network or private operation |
+| Rollback boundary | Revert only this correction in `src/reconciliation.py`, its regressions in `tests/test_reconciliation.py`, and this appended evidence; Phase 11 staging remains independently intact |
+| Correction budget | **151 additions plus deletions** against the frozen candidate; hard limit 200 |
+| Privacy and cleanup | Only synthetic `tmp_path` JSON/SQLite artifacts were used outside the worktree. No real reconciliation, seal, cutover, migration, backup, restore, network, staging, or cleanup operation ran; `dashboard/` and `.atl/` remained excluded and untouched. |
+
+Task status remains unchanged: 33/64 tasks complete, with 12.1 still the first pending task.
