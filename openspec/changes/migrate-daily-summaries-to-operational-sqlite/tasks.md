@@ -227,19 +227,19 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 11: Stage Reconciliation (Delivery Group 5)
 
-- [ ] 11.1 **RED:** Add private-CLI service failures for synthetic canonical
+- [x] 11.1 **RED:** Add private-CLI service failures for synthetic canonical
   manifests, source durability, owner/timezone/scope, explicit identity coverage,
   sparse omission, hash mismatch, duplicate sources, pending invisibility, and
   sanitized output. Add repository-policy failures for tracked private artifact
   directories, command output attempted inside any Git worktree, and cleanup that
   would touch anything beyond proven disposable staging. Require idempotent resume
   only when the exact manifest hash matches.
-- [ ] 11.2 **GREEN:** Implement batch/source staging and pending receipt/version/
+- [x] 11.2 **GREEN:** Implement batch/source staging and pending receipt/version/
   tombstone validation in reusable Python services plus the non-networked
   `scripts/reconcile_history.py` adapter. Extend the tracked-file audit before
   any private-layout command exists, refuse private output beneath Git roots, and
   persist manifest-bound resumable phase state.
-- [ ] 11.3 **REFACTOR:** Consolidate manifest phase helpers, prohibit real
+- [x] 11.3 **REFACTOR:** Consolidate manifest phase helpers, prohibit real
   paths/hashes in ordinary output, and remove duplication without changing the
   RED-defined resume or cleanup boundaries.
 

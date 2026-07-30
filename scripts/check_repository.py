@@ -8,7 +8,14 @@ import subprocess
 from pathlib import Path, PurePosixPath
 
 
-FORBIDDEN_PARTS = {
+PRIVATE_ARTIFACT_PARTS = {
+    "batch-sources",
+    "manifests",
+    "migration",
+    "quarantine",
+    "raw-v2",
+}
+FORBIDDEN_PARTS = PRIVATE_ARTIFACT_PARTS | {
     ".gh-config",
     ".tools",
     ".venv",

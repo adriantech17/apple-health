@@ -15,6 +15,7 @@ from scripts.check_repository import (
     MAX_SCANNED_FILE_BYTES,
     PROTECTED_NARRATIVE_COMMIT,
     PROTECTED_NARRATIVE_PATHS,
+    PRIVATE_ARTIFACT_PARTS,
     SOURCE_COMMIT,
     GovernanceError,
     audit_file,
@@ -209,6 +210,15 @@ class MatrixFixture:
 
 
 class AuditFileTests(unittest.TestCase):
+    def test_rejects_tracked_private_reconciliation_directories(self) -> None:
+        for part in PRIVATE_ARTIFACT_PARTS:
+            with self.subTest(part=part):
+                path = f"{part}/synthetic.txt"
+                self.assertEqual(
+                    audit_file(path),
+                    [f"archivo privado o generado versionado: {path}"],
+                )
+
     def test_rejects_symbolic_links(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
