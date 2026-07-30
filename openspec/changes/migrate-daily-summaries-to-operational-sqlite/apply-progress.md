@@ -4,13 +4,13 @@
 
 - Mode: Strict TDD
 - Artifact store: OpenSpec
-- Assigned batch: Phase 11, Stage Reconciliation (stacked slice 1 targeting `main`)
-- Cumulative completed tasks: 1.1-11.3
-- Newly completed tasks: 11.1-11.3
-- Next pending task: 12.1
-- Delivery boundary: Manifest-bound staging, pending validation, private CLI, and repository policy only; no seal or authority promotion
-- Phase 11 review budget after the automatic gatekeeper retry: 997 non-documentation additions plus deletions; 1,115 total additions plus deletions against `387a66f1d2ddd3b249b19f4a8f2de9211760c142`
-- Auto-chain decision: Phase 11 is the first of two separately reviewable stacked slices; Phase 12 remains dependent and unimplemented
+- Assigned batch: Phase 12, Seal Reconciliation (stacked slice 2 targeting `main` after merged Phase 11)
+- Cumulative completed tasks: 1.1-12.3
+- Newly completed tasks: 12.1-12.3
+- Next pending task: 13.1
+- Delivery boundary: Manifest/evidence-bound validation, one atomic seal authority transition, deterministic promotion, and resumable transactional rollback only; no candidate builder or independent comparator
+- Phase 12 review budget: 965 non-documentation additions plus deletions; 1,047 total additions plus deletions against `a4eaf1959e7a8af56caab32770a5599efbd6e57c`
+- Auto-chain decision: Phase 12 is the second autonomous Delivery Group 5 slice and starts from merged Phase 11; Phase 13 remains unimplemented
 - Prior evidence: Delivery Groups 2-4 task, test, correction, and rollback evidence remains unchanged below
 
 ## Delivery Group 4 Result Contract
@@ -42,6 +42,27 @@ artifacts:
   - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
 next_recommended: sdd-apply task 12.1 as a dependent stacked slice
 risks: Semantic evidence production and atomic sealing remain intentionally absent until phases 12 and 14.
+skill_resolution: paths-injected
+```
+
+## Phase 12 Result Contract
+
+```yaml
+status: success
+executive_summary: >-
+  Phase 12 tasks 12.1-12.3 added deterministic manifest/source/population/lineage
+  validation, manifest-bound semantic-evidence admission, one atomic batch authority
+  transition, explicit tombstone promotion, shared current selection, and idempotent
+  retry after complete transactional rollback.
+artifacts:
+  - src/reconciliation.py
+  - src/operational_store.py
+  - scripts/reconcile_history.py
+  - tests/test_reconciliation.py
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/tasks.md
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
+next_recommended: sdd-verify Phase 12 stacked slice
+risks: Phase 14 remains the required independent semantic-evidence producer before any private seal execution.
 skill_resolution: paths-injected
 ```
 
@@ -82,6 +103,9 @@ execution that did not occur.
 | 11.1 | `tests/test_reconciliation.py`, `scripts/test_check_repository.py` | Integration/policy | Existing operational store: 22 passed; policy: 22 passed | Reconciliation RED exited 2 during collection with `ModuleNotFoundError: scripts.reconcile_history`; policy RED exited 1 with missing `PRIVATE_ARTIFACT_PARTS` import | Initial implementation exposed 5 SQL failures and 7 passes, then the corrected focused suite passed 12 tests | Canonical/hash/identity/scope/source branches, sparse omission, explicit absence, pending invisibility, exact resume, Git-root refusal, cleanup, and sanitized output | Shared phase behavior remained green before helper consolidation |
 | 11.2 | `tests/test_reconciliation.py` | Integration | Phase RED observed before production code | Shared phase RED above; partial-write assertion failed 1 with 12 deselected; traversal cleanup failed 1 with 12 deselected; expected-evidence binding failed 1 with 13 deselected; existing owner/payload import reuse failed 1 with 14 deselected | Each supplemental RED passed after its bounded fix; final focused suite passed 15 tests | Partial `os.write`, normalized cleanup escape, exact manifest drift, expected counts/evidence, owner/hash import reuse, sparse values, and tombstones forced non-trivial paths | Manifest/source phase helpers and privacy-safe result adapter retained 15 passing tests |
 | 11.3 | `tests/test_reconciliation.py`, `scripts/test_check_repository.py` | Integration/policy | Phase 11 GREEN: 15 pytest and 23 policy tests passing | The task's refactor boundary is the shared failing phase RED plus four supplemental REDs, all written before their production changes | No new behavior was introduced during refactor; focused union remained green | All RED-defined manifest, durability, resume, cleanup, privacy, idempotency, and policy branches remained covered | Replaced repeated source-set scans with explicit phase sets; final focused command exited 0 with 15 pytest and 23 policy tests |
+| 12.1 | `tests/test_reconciliation.py` | Integration | Existing reconciliation/operational/app safety net: 58 passed | Validation RED: `-k 'seal_'` exited 2 during collection because `reconciliation_evidence_binding` did not exist | Validation GREEN: 7 passed, 22 deselected | Approval, retained-source, blocking-error, missing-lineage/identity, missing evidence, and stale snapshot paths | Shared phase refactor retained the final 44-case reconciliation suite |
+| 12.2 | `tests/test_reconciliation.py` | Integration | Phase-12 validation cluster: 7 passed | Atomic-seal RED: 10 failed, 1 passed, 29 deselected because `sealed_at` and the authority transition were absent; CLI RED: 2 failed, 40 deselected | Atomic GREEN: 11 passed, 29 deselected; CLI GREEN: 2 passed, 40 deselected | Equal occurrences, tombstone, later live, replay, concurrent reader, five transaction faults, exact retry, and conflict cases | Extracted shared `apply_projection`; reconciliation and operational-store suites remained 64/64 green immediately after refactor |
+| 12.3 | `tests/test_reconciliation.py`, `tests/test_operational_store.py` | Integration/fault | Phase-12 GREEN: 64 passed across reconciliation and operational store | Resume re-hash RED: 1 failed, 42 deselected; sealed-lineage RED: 1 failed, 43 deselected | Supplemental GREEN commands each passed 1 focused case; final reconciliation suite passed 44 | Five rollback points preserve pending receipts/versions/evidence; retries reuse sequence 1; sealed retries re-hash artifacts and reject incomplete promotions | Shared authority/current helper plus final focused/relevant/full suites: 44, 125, and 241 passed |
 
 ## Delivery Group 2 Test Summary
 
@@ -118,6 +142,15 @@ execution that did not occur.
 - **Pure functions/helpers created**: 9 manifest, scope, candidate, publication, and resume helpers
 - **Synthetic runtime**: Temporary mode-0700 roots, mode-0600 canonical manifest/source files, real SQLite/WAL, durable content-addressed artifacts, pending rows, CLI success/failure output, partial writes, and cleanup boundaries; no real reconciliation, migration, cutover, backup, or restore
 
+## Phase 12 Test Summary
+
+- **Total tests written**: 22 Phase 12 reconciliation cases, including parametrized mismatch and five transaction-fault paths; `tests/test_reconciliation.py` now collects 44 cases
+- **Total tests passing**: 44 focused reconciliation; 125 relevant reconciliation/storage/API; 241 repository-wide
+- **Layers used**: Integration/fault (22 new), E2E (0)
+- **Approval tests**: None — new seal behavior was defined by failing tests before implementation
+- **Shared helper refactor**: Live and batch authority now call one `apply_projection` function
+- **Synthetic runtime**: Temporary mode-0700 roots, mode-0600 manifest/source artifacts, real SQLite/WAL readers and writer transactions, five injected seal faults, CLI approval, tombstones, live corrections, and replay; no private or production operation
+
 ## Completed Tasks
 
 - [x] 4.1 RED: totals, units, Decimal, canonical JSON, and rejection fixtures
@@ -144,6 +177,9 @@ execution that did not occur.
 - [x] 11.1 RED: canonical manifest, source durability, scope/identity, sparse omission, mismatch, pending invisibility, policy, cleanup, privacy, and exact-resume failures
 - [x] 11.2 GREEN: durable manifest/source staging, pending receipts/versions/tombstones, resumable state, private CLI, and tracked-artifact audit
 - [x] 11.3 REFACTOR: consolidated manifest/source phase helpers and privacy-safe output without changing the RED-defined boundaries
+- [x] 12.1 RED: approval/source/population/conflict/evidence, reader, fault, later-live, absence, replay, and idempotence failures
+- [x] 12.2 GREEN: one manifest-bound atomic seal, authority sequence, activation, promotion, projection, and complete lineage
+- [x] 12.3 REFACTOR: shared live/seal projection, deterministic retry, transactional rollback, and retained-evidence verification
 
 ## Delivery Group 2 Work Unit Evidence
 
@@ -216,6 +252,30 @@ execution that did not occur.
 | Protected-path-filtered tracked and untracked `git diff --check` equivalents | Exit 0 with no whitespace errors |
 | Branch convention command | Not run by instruction: native ledger, stage, commit, review, issue, push, and PR delivery are parent-owned |
 
+## Phase 12 Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test command and exact result | `.venv/bin/python -m pytest tests/test_reconciliation.py -q` exited 0: 44 passed in 0.70s. The final combined focused/policy rerun below also passed 23 repository-policy unittests. |
+| Runtime harness command and exact result | `.venv/bin/python -m pytest tests/test_reconciliation.py -q -k 'cli_seals_only or reader_overlapping or interrupted_seal'` exited 0: 7 passed, 37 deselected in 0.19s. It exercised the real private CLI adapter, WAL reader overlap, and five transaction fault points against synthetic `tmp_path` artifacts only. |
+| Rollback boundary | Revert Phase 12 additions in `src/reconciliation.py`, `scripts/reconcile_history.py`, and `tests/test_reconciliation.py`; restore the private projection method in `src/operational_store.py`; revert only checkboxes 12.1-12.3 and Phase 12 progress evidence. Phase 11 pending batches remain intact and invisible with no authority event or projection. |
+| Runtime rollback/cleanup | Every injected fault rolls the `IMMEDIATE` transaction back to pending receipts and versions, sequence 1, zero promotions, and unchanged imports/sources/evidence; exact retry then seals once. Seal performs no filesystem cleanup or historical deletion. Existing cleanup remains restricted to proven `batch-sources/.<id>.staging` files. |
+| Privacy and authority boundary | Only synthetic temporary JSON/SQLite artifacts were used. CLI output contains sanitized counts/codes, the public app imports no seal entry point, and live ingestion cannot supply reconciliation/backfill authority. No real reconciliation, migration, cutover, backup, restore, deployment, network, or destructive cleanup ran. |
+| Review budget | 965 non-documentation additions plus deletions (912 additions, 53 deletions), below the approved 1,000-line ceiling; complete diff is 1,047 lines (983 additions, 64 deletions), including OpenSpec evidence. |
+| Task status | 36/64 tasks complete; 12.1-12.3 are checked and 13.1 remains the first pending task. |
+
+## Phase 12 Final Verification
+
+| Command | Exact result |
+|---|---|
+| `.venv/bin/python -m pytest tests/test_reconciliation.py -q` | Exit 0: 44 passed in 0.70s |
+| `.venv/bin/python -m pytest tests/test_reconciliation.py tests/test_operational_store.py tests/test_storage_schema.py tests/test_operational_reads.py tests/test_live_ingestion.py tests/test_app.py tests/test_storage.py -q` | Exit 0: 125 passed in 5.39s |
+| `.venv/bin/python -m pytest` | Exit 0: 241 passed in 5.39s |
+| Protected-path-filtered `scripts.check_repository.main(...)` using Git pathspec exclusions | Exit 0: repository audit OK, 141 versioned files inspected; `dashboard/` and `.atl/` were excluded |
+| `.venv/bin/python -m unittest scripts.test_check_repository` | Exit 0: 23 passed; expected synthetic negative-fixture diagnostics preceded final `OK` |
+| `git diff --check` | Exit 0 with no output |
+| Branch convention command | Not run by instruction: branch, ledger, stage, commit, review, issue, push, and PR mutations are parent-owned |
+
 ## Deviations And Constraints
 
 - `src/storage.py` generic conversions remain unchanged for the pre-cutover/fallback `HealthStore`; the verified-candidate path bypasses that aggregation and reads only operational SQLite.
@@ -223,7 +283,7 @@ execution that did not occur.
 - Final readiness still requires a WAL/checkpoint policy, representative Raspberry Pi 5/NVMe measurement, and proven isolated restore after corruption.
 - Final delivery gates, review, commit, push, and PR creation remain parent-owned and were not run here.
 - Delivery Group 4 wires `src/operational_store.py` only when pointer selection resolves a schema-valid `ready` candidate; direct and legacy-pointer roots continue using `HealthStore` without dual-write.
-- Batch staging is now implemented by Phase 11; approval, semantic-evidence admission, sealing, authority allocation, and current projection remain Phase 12+ and are absent from this slice.
+- Batch staging and sealing are implemented through Phase 12; Phase 14's independent semantic comparator remains required to produce admissible evidence before private execution.
 - The first bare `python -m pytest tests/test_storage_schema.py tests/test_metric_contracts.py -q` safety-net attempt exited 127 because `python` was not on the parent shell PATH. The repository-local `.venv` was already present; all recorded TDD and final commands then activated it explicitly without installing or changing dependencies.
 - No production-data operation, schema rewrite, ADR 0004 edit, dashboard/deployment change, dual-write, interpolation, zero-fill, or version combination occurred.
 - Yesterday becomes `complete` only when the exact `Default` source also supplies both existing automation and session identifiers; otherwise its accepted completeness remains `unknown`. Receipt time alone never proves closure.
