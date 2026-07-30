@@ -245,15 +245,15 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 12: Seal Reconciliation (Delivery Group 5)
 
-- [ ] 12.1 **RED:** Fail approval-hash mismatch, changed source, population error,
+- [x] 12.1 **RED:** Fail approval-hash mismatch, changed source, population error,
   unordered conflict, duplicate batch identity, concurrent reader, transaction
   fault, later live, explicit absence, non-authoritative replay, and missing or
   stale persisted semantic-verification evidence.
-- [ ] 12.2 **GREEN:** Recheck and atomically seal one approved batch, allocate one
+- [x] 12.2 **GREEN:** Recheck and atomically seal one approved batch, allocate one
   authority sequence, activate candidates, update current/tombstones, and retain
   complete audit lineage only when a manifest-bound successful comparison record
   exists. Phase 14 supplies the independent producer before private execution.
-- [ ] 12.3 **REFACTOR:** Share authority/current code with live ingestion, keep the
+- [x] 12.3 **REFACTOR:** Share authority/current code with live ingestion, keep the
   public route incapable of batch authority, and run the full reconciliation and
   operational-store suites.
 

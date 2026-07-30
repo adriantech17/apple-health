@@ -160,6 +160,49 @@ def _projection_winner(rows: Sequence[tuple[str, str, int]]) -> tuple[str, str |
     return ("selected", winners[0][0]) if len(winners) == 1 else ("conflict", None)
 
 
+def apply_projection(
+    db: Any, user_id: str, identities: set[tuple[str, str]]
+) -> None:
+    for metric, local_date in sorted(identities):
+        rows = db.execute(
+            """SELECT version.version_id, version.completeness,
+                      COALESCE(version.live_authority_sequence,
+                               version.batch_authority_sequence) AS sequence
+               FROM metric_versions AS version
+               WHERE version.user_id=? AND version.metric=? AND version.local_date=?
+                 AND version.validation_status='valid'
+                 AND (
+                     version.live_authority_sequence IS NOT NULL
+                     OR EXISTS (
+                         SELECT 1 FROM batch_promotions AS promotion
+                         WHERE promotion.user_id=version.user_id
+                           AND promotion.batch_id=version.batch_id
+                           AND promotion.metric=version.metric
+                           AND promotion.local_date=version.local_date
+                           AND promotion.version_id=version.version_id
+                     )
+                 )
+               ORDER BY sequence DESC, version.version_id""",
+            (user_id, metric, local_date),
+        ).fetchall()
+        outcome, version_id = _projection_winner(rows)
+        if outcome == "missing":
+            db.execute(
+                "DELETE FROM metric_current WHERE user_id=? AND metric=? AND local_date=?",
+                (user_id, metric, local_date),
+            )
+            continue
+        if outcome == "conflict":
+            continue
+        db.execute(
+            """INSERT INTO metric_current (user_id, metric, local_date, version_id)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT (user_id, metric, local_date)
+               DO UPDATE SET version_id=excluded.version_id""",
+            (user_id, metric, local_date, version_id),
+        )
+
+
 class OperationalStore:
     def __init__(
         self,
@@ -476,44 +519,7 @@ class OperationalStore:
         )
 
     def _apply_projection(self, db: Any, identities: set[tuple[str, str]]) -> None:
-        for metric, local_date in sorted(identities):
-            rows = db.execute(
-                """SELECT version.version_id, version.completeness,
-                          COALESCE(version.live_authority_sequence,
-                                   version.batch_authority_sequence) AS sequence
-                   FROM metric_versions AS version
-                   WHERE version.user_id=? AND version.metric=? AND version.local_date=?
-                     AND version.validation_status='valid'
-                     AND (
-                         version.live_authority_sequence IS NOT NULL
-                         OR EXISTS (
-                             SELECT 1 FROM batch_promotions AS promotion
-                             WHERE promotion.user_id=version.user_id
-                               AND promotion.batch_id=version.batch_id
-                               AND promotion.metric=version.metric
-                               AND promotion.local_date=version.local_date
-                               AND promotion.version_id=version.version_id
-                         )
-                     )
-                   ORDER BY sequence DESC, version.version_id""",
-                (self.user_id, metric, local_date),
-            ).fetchall()
-            outcome, version_id = _projection_winner(rows)
-            if outcome == "missing":
-                db.execute(
-                    "DELETE FROM metric_current WHERE user_id=? AND metric=? AND local_date=?",
-                    (self.user_id, metric, local_date),
-                )
-                continue
-            if outcome == "conflict":
-                continue
-            db.execute(
-                """INSERT INTO metric_current (user_id, metric, local_date, version_id)
-                   VALUES (?, ?, ?, ?)
-                   ON CONFLICT (user_id, metric, local_date)
-                   DO UPDATE SET version_id=excluded.version_id""",
-                (self.user_id, metric, local_date, version_id),
-            )
+        apply_projection(db, self.user_id, identities)
 
     def rebuild_current(self) -> None:
         with OperationalWriterLock(self.root, blocking=True) as writer:
