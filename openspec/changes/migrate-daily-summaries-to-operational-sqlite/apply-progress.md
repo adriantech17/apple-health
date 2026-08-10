@@ -4,13 +4,13 @@
 
 - Mode: Strict TDD
 - Artifact store: OpenSpec
-- Assigned batch: Phase 12, Seal Reconciliation (stacked slice 2 targeting `main` after merged Phase 11)
-- Cumulative completed tasks: 1.1-12.3
-- Newly completed tasks: 12.1-12.3
-- Next pending task: 13.1
-- Delivery boundary: Manifest/evidence-bound validation, one atomic seal authority transition, deterministic promotion, and resumable transactional rollback only; no candidate builder or independent comparator
-- Phase 12 review budget: 965 non-documentation additions plus deletions; 1,047 total additions plus deletions against `a4eaf1959e7a8af56caab32770a5599efbd6e57c`
-- Auto-chain decision: Phase 12 is the second autonomous Delivery Group 5 slice and starts from merged Phase 11; Phase 13 remains unimplemented
+- Assigned batch: Delivery Group 6, Phase 13 Candidate Builder and Phase 14 Semantic Comparator
+- Cumulative completed tasks: 1.1-14.3
+- Newly completed tasks: 13.1-14.3
+- Next pending task: 15.1
+- Delivery boundary: Immutable synthetic candidate construction, exact population reconstruction, resumable source-bound phases, and independent manifest-bound semantic evidence only; no backup, restore, cutover, readiness, or maintainer-only private operation
+- Delivery Group 6 review budget: 1,000 non-documentation additions plus deletions, at the approved ceiling; 1,113 total additions plus deletions against `c3e03dc89e7d4f061a5f810c972cbe52f7f3ae24`
+- Auto-chain decision: Delivery Group 6 is one autonomous stacked-to-`main` slice containing only phases 13-14; Phase 15 remains unimplemented
 - Prior evidence: Delivery Groups 2-4 task, test, correction, and rollback evidence remains unchanged below
 
 ## Delivery Group 4 Result Contract
@@ -376,3 +376,98 @@ skill_resolution: paths-injected
 | Privacy and cleanup | Only synthetic `tmp_path` JSON/SQLite artifacts were used outside the worktree. No real reconciliation, seal, cutover, migration, backup, restore, network, staging, or cleanup operation ran; `dashboard/` and `.atl/` remained excluded and untouched. |
 
 Task status remains unchanged: 33/64 tasks complete, with 12.1 still the first pending task.
+
+## Delivery Group 6 Result Contract
+
+```yaml
+status: success
+executive_summary: >-
+  Delivery Group 6 tasks 13.1-14.3 added a source-immutable, gate-drained,
+  WAL-consistent and resumable candidate builder plus an independent reference
+  semantic comparator that persists sanitized manifest/candidate/source-bound evidence.
+artifacts:
+  - scripts/migrate_storage.py
+  - tests/test_storage_migration.py
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/tasks.md
+  - openspec/changes/migrate-daily-summaries-to-operational-sqlite/apply-progress.md
+next_recommended: sdd-apply Delivery Group 7, tasks 15.1-17.3
+risks: Representative Raspberry Pi 5/NVMe measurements and isolated restore remain Phase 15+ readiness requirements.
+skill_resolution: paths-injected
+```
+
+## Delivery Group 6 TDD Cycle Evidence
+
+The three numbered tasks in each phase are the RED, GREEN, and REFACTOR checkpoints
+of one shared phase cycle. Evidence is repeated per task so each completed checkbox
+has a complete machine-routable cycle without claiming an execution that did not occur.
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|---|---|---|---|---|---|---|---|
+| 13.1 | `tests/test_storage_migration.py` | Integration/fault | Existing maintenance/schema/reconciliation/store suites: 102 passed | `.venv/bin/python -m pytest tests/test_storage_migration.py -q` exited 2 during collection with `ModuleNotFoundError: scripts.migrate_storage`; partial state-write supplemental RED exited 1 because resume read truncated JSON | Shared Phase 13 GREEN exited 0 with 3 passed; partial-write GREEN passed 1 focused case | WAL-backed metadata, six baseline sources, live/backfill populations, two gap classes, interruption/resume, source drift, partial writes, and wrong selected layout | Shared durable helpers and a complete-write loop retained 6 final focused cases |
+| 13.2 | `tests/test_storage_migration.py` | Integration/fault | 102 dependent cases passed before production creation | Shared RED failed because the candidate service/adapter did not exist | Candidate builder GREEN exited 0 with 3 passed | First build and exact resume use different paths; drift and interrupted transaction prove fail-closed behavior | Consolidated one cumulative phase-state mapping; focused suite remained 3 passed |
+| 13.3 | `tests/test_storage_migration.py` | Integration/fault | Phase 13 GREEN: 3 passed | Shared Phase 13 RED defined source-integrity and discard behavior before refactor | No new behavior was introduced during refactor | Existing success, interruption, resume, drift, and selected-layout branches remained covered | Existing reconciliation durability helpers and one phase transition mapping retained 3 passing cases |
+| 14.1 | `tests/test_storage_migration.py` | Integration/reference | Phase 13 focused suite: 3 passed | Comparator cluster exited 1 with 2 failed, 3 deselected because `compare_candidate` did not exist; integral-zero supplemental RED exited 1 with `2 != 20`; independent authority-selection RED exited 1 with one failed, five deselected | Comparator GREEN passed 5 cases; Decimal and authority-selection GREEN commands each passed 1 focused case | Passed evidence, overlapping live/backfill authority, mutated-version mismatch, stale candidate hash, tombstone, source/manifest binding, populations, gaps, freshness, and multi-digit Decimal paths | Independent reference/query snapshots retained the final 6-case suite |
+| 14.2 | `tests/test_storage_migration.py` | Integration/reference | Candidate construction: 3 passed | Shared comparator RED referenced the absent independent service | Shared comparator GREEN persisted passed/failed evidence and sanitized reports; 5 passed | One valid candidate and one non-current post-evidence mutation produced different candidate hashes and one stable privacy-safe difference category | Reference conversion/detail helpers remain separate from `apply_projection`; final focused suite passed 6 |
+| 14.3 | `tests/test_storage_migration.py` | Integration/performance | Phase 14 GREEN: 5 passed | Shared comparator RED plus Decimal and authority-selection supplemental REDs define all refactor behavior | Final focused command exited 0 with 6 passed in 0.21s | Deterministic six-source canonical manifest, overlapping authorities, explicit absence, exact reuse, stale reuse, and value mutation cover non-trivial paths | Synthetic comparison passed in 0.004416s at 46,710,784-byte process max RSS; checks were not weakened |
+
+## Delivery Group 6 Test Summary
+
+- **Total tests written**: 6 collected integration/reference cases in `tests/test_storage_migration.py`.
+- **Total tests passing**: 6 focused; 108 relevant dependent cases; 247 repository-wide.
+- **Layers used**: Integration/fault (3), Integration/reference (2), Unit/reference (1), E2E (0).
+- **Approval tests**: None — both new services were behavior-driven before implementation.
+- **Independent functions/helpers**: Reference Decimal conversion, reference JSON/details normalization, semantic snapshot construction, and direct SQL observation do not call operational current-selection logic.
+- **Synthetic runtime**: Temporary mode-0700 roots, mode-0600 files, live SQLite/WAL, advisory gate/drain locks, six synthetic baseline sources, preserved live/backfill authority, explicit gaps/tombstone, subprocess CLI build/resume/compare, and no private dataset or external service.
+
+## Delivery Group 6 Completed Tasks
+
+- [x] 13.1 RED: gate/drain, WAL snapshot, immutable hashes, adopted layout, six-source baseline, preserved populations/gaps, resume/mismatch, candidate hash, and legacy stability
+- [x] 13.2 GREEN: source-bound candidate phases, exact live/backfill reconstruction, sanitized durable state, and idempotent resume
+- [x] 13.3 REFACTOR: shared durable publication helpers and consolidated phase transitions without behavior changes
+- [x] 14.1 RED: independent identity/content/provenance/current/population/gap/batch/freshness/manifest/staleness comparisons
+- [x] 14.2 GREEN: independent reference normalization, structured sanitized report, expected-correction classification, and fail-closed evidence
+- [x] 14.3 REFACTOR: independent query/reference paths, deterministic synthetic manifest, and comparison time/memory evidence
+
+## Delivery Group 6 Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test command and exact result | `.venv/bin/python -m pytest tests/test_storage_migration.py -q` exited 0: 6 passed in 0.21s. |
+| Relevant dependent command and exact result | `.venv/bin/python -m pytest tests/test_storage_migration.py tests/test_reconciliation.py tests/test_operational_store.py tests/test_storage_schema.py tests/test_maintenance.py -q` exited 0: 108 passed in 1.38s. |
+| Runtime harness command/scenario and exact result | A temporary-directory Python harness invoked `.venv/bin/python -m scripts.migrate_storage` through the real module/CLI boundary. First build: `phase=complete source_files=4 evidence_gaps=2 resumed=no`; exact resume: same counts with `resumed=yes`; compare: `outcome=passed differences=0`; report mode `0600`; temporary root absent after cleanup. |
+| Process and cleanup evidence | Only harness subprocesses for the repository CLI were launched and awaited. No network, HTTP, deployment, process-control, backup, restore, cutover, seal, or real migration ran. `TemporaryDirectory` cleanup reported `cleanup True`; the durable gate and all candidate artifacts existed only below that synthetic root. |
+| Source and rollback boundary | Revert/delete only `scripts/migrate_storage.py`, `tests/test_storage_migration.py`, task checkboxes 13.1-14.3, and this appended DG6 evidence. Discarding a synthetic/private candidate removes all new state; legacy metadata/raw/Parquet remain selected and byte-stable, while the comparator changes neither source evidence nor current selection. |
+| Privacy boundary | Tests and harnesses used minimal synthetic values in temporary roots. Ordinary CLI output and comparison reports expose only phase/outcome/count/check codes; no paths, hashes, payloads, credentials, or health values are printed. Protected `dashboard/` and `.atl/` paths were excluded from repository/diff commands and never read or enumerated. |
+| Review budget | 1,000 authored non-documentation additions plus deletions: 660 in `scripts/migrate_storage.py` and 340 in `tests/test_storage_migration.py`. Complete review total: 1,113 lines (1,100 additions, 13 deletions) against `c3e03dc89e7d4f061a5f810c972cbe52f7f3ae24`. The pre-existing untracked `exploration.md` is unchanged and excluded. |
+| Task status | 42/64 tasks complete; 13.1-14.3 are checked and 15.1 is the first pending task. |
+
+## Delivery Group 6 Final Verification
+
+| Command | Exact result |
+|---|---|
+| `.venv/bin/python -m pytest tests/test_storage_migration.py -q` | Exit 0: 6 passed in 0.21s |
+| `.venv/bin/python -m pytest tests/test_storage_migration.py tests/test_reconciliation.py tests/test_operational_store.py tests/test_storage_schema.py tests/test_maintenance.py -q` | Exit 0: 108 passed in 1.38s |
+| `.venv/bin/python -m pytest` | Exit 0: 247 passed in 5.30s; configured `testpaths = ["tests"]` kept discovery outside protected paths |
+| Protected-path-filtered `scripts.check_repository.main(...)` with the two untracked DG6 files included | Exit 0: repository audit OK, 143 candidate files inspected; `dashboard/` and `.atl/` excluded |
+| `.venv/bin/python -m unittest scripts.test_check_repository` | Exit 0: 23 passed in 0.137s; expected synthetic negative-fixture diagnostics preceded final `OK` |
+| Protected-path-filtered tracked `git diff --check` plus `git diff --no-index --check` for both new files | Exit 0 with no whitespace errors |
+| Synthetic CLI build/resume/compare harness | Exit 0: build and resume completed, comparison passed with zero differences, report mode `0600`, cleanup true |
+| Synthetic comparator measurement | Passed in 0.004416 seconds; process maximum RSS 46,710,784 bytes |
+| Unfiltered `python scripts/check_repository.py` | Not run because it would enumerate explicitly forbidden `dashboard/` and `.atl/`; the same audit entry point passed with protected path exclusions and all DG6 files explicitly included |
+| Branch convention command | Not run by instruction: stage, commit, title, push, issue, review, and PR delivery remain orchestrator-owned |
+
+## Delivery Group 6 Deviations And Constraints
+
+- No design deviation: candidate construction requires the predecessor adopted layout with legacy still selected; actual private adoption and process stop/start remain maintainer-only M.1 work.
+- The independent comparator shares no operational projection or selection function. Candidate construction may call `apply_projection`; the comparator instead constructs a reference snapshot and reads persisted state directly.
+- Comparison evidence is persisted only in `semantic_evidence`; source/current rows are never modified by comparison. Failed evidence remains non-admissible to Phase 12 sealing.
+- Backup, isolated restore, candidate readiness, cutover journal/pointer switching, process lifecycle, POST reopening, and the irreversible first-live-receipt boundary remain entirely Phase 15+ or maintainer-only scope.
+- The candidate builder accepts only a canonical, private reconstruction description of independently verifiable populations. It records pruned/collapsed evidence gaps and never synthesizes replay, freshness, or authority for a gap.
+
+## Native Correction `review-d02425cb6ca036a5`
+
+- Evidence revision: `sha256:f193969312b9f54953e8aebd8d69eab6041103e0e13743192b33c0ffc89911d3` over the frozen-to-corrected script and test patches.
+- Strict-TDD RED/GREEN: the four named selectors each failed 1 before production changes (5/6/7/8 deselected respectively), then passed 1 and passed again after no-behavior-change refactor; corrective union passed 4 with 5 deselected.
+- Verification: migration 9 passed; relevant dependencies 111 passed; full suite 250 passed. Repository audit, policy unittest, and whitespace results are recorded in the correction return.
+- Runtime: synthetic CLI build/resume/compare exited 0 with `resumed=no`, `resumed=yes`, and `outcome=passed differences=0`; report mode `0600`, cleanup true, no private operation.
+- Budget/rollback/status: 159 lines (script 84, tests 67, evidence 8); revert only those correction hunks. Tasks remain 42/64 and next routing remains Delivery Group 7, tasks 15.1-17.3.
