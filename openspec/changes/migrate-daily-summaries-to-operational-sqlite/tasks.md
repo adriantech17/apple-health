@@ -259,32 +259,32 @@ group; the final group review still runs their union and all required checks:
 
 ## Phase 13: Candidate Builder (Delivery Group 6)
 
-- [ ] 13.1 **RED:** Add synthetic tests for durable gate/drain, SQLite online WAL
+- [x] 13.1 **RED:** Add synthetic tests for durable gate/drain, SQLite online WAL
   snapshot, immutable source hashes, layout adoption, candidate state, six-source
   baseline, original receipt reconstruction, every accepted backfill batch exactly
   once with preserved identity/kind/time/authority order, collapsed/pruned evidence
   gaps, interrupted resume, mismatched-source refusal, final candidate SQLite hash,
   and legacy hash stability through every completed phase.
-- [ ] 13.2 **GREEN:** Implement candidate phases in `scripts/migrate_storage.py`
+- [x] 13.2 **GREEN:** Implement candidate phases in `scripts/migrate_storage.py`
   through service functions; never mutate source, invent receipts/freshness, or
   create audit replay in place of preserved live or backfill authority. Persist
   sanitized phase evidence/input hashes and implement idempotent resume or mismatch
   refusal for the separate live-receipt and backfill-batch populations.
-- [ ] 13.3 **REFACTOR:** Consolidate phase transitions and remove duplication
+- [x] 13.3 **REFACTOR:** Consolidate phase transitions and remove duplication
   without changing RED-defined resume, source-integrity, or discard behavior.
 
 ## Phase 14: Semantic Comparator (Delivery Group 6)
 
-- [ ] 14.1 **RED:** Fail independently calculated owner/metric/date, validity,
+- [x] 14.1 **RED:** Fail independently calculated owner/metric/date, validity,
   completeness, Decimal value, unit, details, provenance, current/tombstone,
   reconstructable live-receipt and backfill-batch populations, evidence-gap,
   batch identity/order, four freshness comparisons, manifest binding, and stale
   comparison reuse.
-- [ ] 14.2 **GREEN:** Implement a reference normalizer and structured private
+- [x] 14.2 **GREEN:** Implement a reference normalizer and structured private
   comparison record/report that classifies expected legacy corrections, binds to
   manifest/candidate/source hashes, and blocks every unexplained difference
   without printing real values.
-- [ ] 14.3 **REFACTOR:** Keep the reference path independent from operational
+- [x] 14.3 **REFACTOR:** Keep the reference path independent from operational
   selection code, add deterministic synthetic golden manifests, and measure
   comparison time/memory without weakening checks.
 
